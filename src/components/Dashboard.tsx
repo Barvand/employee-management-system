@@ -1,7 +1,8 @@
-// /src/pages/Dashboard.tsx
+// Enhanced /src/pages/Dashboard.tsx
 import React, { useEffect, useState } from "react";
 import { databases } from "/appwriteConfig";
 import { v4 as uuidv4 } from "uuid";
+import ConfirmModal from "./ConfirmModal";
 
 const DB_ID = "688cf1f200298c50183d";
 const PROJECTS_COLLECTION = "688cf200000b6fdbfe61";
@@ -13,11 +14,16 @@ interface Project {
   client?: string;
   totalHours: number;
   isActive: boolean;
+  createdAt: string;
 }
 
 const Dashboard: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [search, setSearch] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editFormData, setEditFormData] = useState<Partial<Project>>({});
+  const [showModal, setShowModal] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     id: uuidv4(),
     name: "",
@@ -27,7 +33,6 @@ const Dashboard: React.FC = () => {
     isActive: true,
     createdAt: new Date().toISOString(),
   });
-
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -71,10 +76,7 @@ const Dashboard: React.FC = () => {
       return;
     }
 
-    const data = {
-      ...formData,
-      createdAt: new Date().toISOString(), // ✅ make sure it's current
-    };
+    const data = { ...formData, createdAt: new Date().toISOString() };
 
     try {
       const newProject = await databases.createDocument(
@@ -100,11 +102,67 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  const handleDeleteProject = async (id: string) => {
+    try {
+      await databases.deleteDocument(DB_ID, PROJECTS_COLLECTION, id);
+      setProjects((prev) => prev.filter((p) => p.$id !== id));
+    } catch (err) {
+      console.error("Delete failed:", err);
+      setError("Failed to delete project.");
+    }
+  };
+
+  const startEdit = (project: Project) => {
+    setEditingId(project.$id);
+    setEditFormData({ ...project });
+  };
+
+  const handleEditChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setEditFormData((prev) => ({
+      ...prev,
+      [name]: name === "totalHours" ? Number(value) : value,
+    }));
+  };
+
+  const handleEditSave = async () => {
+    if (!editingId || !editFormData.name?.trim()) return;
+
+    // Remove unwanted system keys like $databaseId, $collectionId, $createdAt, etc.
+    const {
+      $id,
+      $databaseId,
+      $collectionId,
+      $createdAt,
+      $updatedAt,
+      ...safeData
+    } = editFormData;
+
+    try {
+      const updated = await databases.updateDocument(
+        DB_ID,
+        PROJECTS_COLLECTION,
+        editingId,
+        safeData
+      );
+      setProjects((prev) =>
+        prev.map((p) => (p.$id === editingId ? updated : p))
+      );
+      setEditingId(null);
+      setEditFormData({});
+    } catch (err) {
+      console.error("Update failed:", err);
+      setError("Failed to update project.");
+    }
+  };
+
+  const filteredProjects = projects.filter((project) =>
+    project.name.toLowerCase().includes(search.toLowerCase())
+  );
+
   return (
     <div className="p-4 max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold mb-4">Projects Dashboard</h1>
-
-      {/* Search Bar */}
       <input
         type="text"
         placeholder="Search projects..."
@@ -113,7 +171,6 @@ const Dashboard: React.FC = () => {
         className="w-full p-2 border rounded mb-4"
       />
 
-      {/* Feedback Messages */}
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded mb-4">
           {error}
@@ -125,7 +182,6 @@ const Dashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Project Creation Form */}
       <form
         onSubmit={handleCreateProject}
         className="space-y-4 bg-gray-50 p-4 rounded shadow mb-6"
@@ -177,30 +233,101 @@ const Dashboard: React.FC = () => {
         </button>
       </form>
 
-      {/* Project List */}
       <ul className="space-y-2">
-        {projects.length === 0 ? (
+        {filteredProjects.length === 0 ? (
           <p className="text-gray-600 text-sm">No projects found.</p>
         ) : (
-          projects.map((project) => (
-            <li
-              key={project.$id}
-              className="p-4 border rounded bg-white flex justify-between items-center"
-            >
-              <div>
-                <h2 className="text-lg font-semibold">{project.name}</h2>
-                <p className="text-sm text-gray-600">
-                  Client: {project.client || "N/A"} | Status:{" "}
-                  <span
-                    className={`font-semibold ${
-                      project.isActive ? "text-green-600" : "text-red-500"
-                    }`}
+          filteredProjects.map((project) => (
+            <li key={project.$id} className="p-4 border rounded bg-white">
+              {editingId === project.$id ? (
+                <div className="space-y-2">
+                  <input
+                    name="name"
+                    value={editFormData.name || ""}
+                    onChange={handleEditChange}
+                    className="w-full p-2 border rounded"
+                  />
+                  <input
+                    name="client"
+                    value={editFormData.client || ""}
+                    onChange={handleEditChange}
+                    className="w-full p-2 border rounded"
+                  />
+                  <input
+                    name="description"
+                    value={editFormData.description || ""}
+                    onChange={handleEditChange}
+                    className="w-full p-2 border rounded"
+                  />
+                  <input
+                    name="totalHours"
+                    type="number"
+                    value={editFormData.totalHours || 0}
+                    onChange={handleEditChange}
+                    className="w-full p-2 border rounded"
+                  />
+                  <button
+                    onClick={handleEditSave}
+                    className="bg-green-600 text-white px-3 py-1 rounded mr-2"
                   >
-                    {project.isActive ? "Active" : "Inactive"}
-                  </span>
-                </p>
-              </div>
-              <span className="text-sm">{project.totalHours} hrs</span>
+                    Save
+                  </button>
+                  <button
+                    onClick={() => setEditingId(null)}
+                    className="bg-gray-400 text-white px-3 py-1 rounded"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h2 className="text-lg font-semibold">{project.name}</h2>
+                    <p className="text-sm text-gray-600">
+                      Client: {project.client || "N/A"} | Status:
+                      <span
+                        className={`font-semibold ${
+                          project.isActive ? "text-green-600" : "text-red-500"
+                        }`}
+                      >
+                        {" "}
+                        {project.isActive ? "Active" : "Inactive"}
+                      </span>
+                    </p>
+                  </div>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => startEdit(project)}
+                      className="text-blue-500 cursor-pointer"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowModal(true);
+                        setProjectToDelete(project.$id);
+                      }}
+                      className="text-red-600 cursor-pointer"
+                    >
+                      Delete
+                    </button>
+                    <ConfirmModal
+                      isOpen={showModal}
+                      onCancel={() => {
+                        setShowModal(false);
+                        setProjectToDelete(null);
+                      }}
+                      onConfirm={async () => {
+                        if (projectToDelete) {
+                          await handleDeleteProject(projectToDelete);
+                          setShowModal(false);
+                          setProjectToDelete(null);
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
             </li>
           ))
         )}
