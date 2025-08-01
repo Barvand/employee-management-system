@@ -1,0 +1,5 @@
+@import "tailwindcss";
+
+@theme {
+  --main-color: #2c3e50;
+}
