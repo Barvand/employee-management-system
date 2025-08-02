@@ -2,28 +2,27 @@
 import React from "react";
 
 interface ConfirmModalProps {
-  isOpen: boolean;
+  title: string;
+  message: string;
   onConfirm: () => void;
   onCancel: () => void;
-  message?: string;
 }
 
 const ConfirmModal: React.FC<ConfirmModalProps> = ({
-  isOpen,
+  title,
+  message,
   onConfirm,
   onCancel,
-  message = "Are you sure you want to delete this project?",
 }) => {
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 bg-opacity-50">
-      <div className="bg-white rounded-lg shadow p-6 w-80">
-        <p className="text-gray-800 text-sm mb-4">{message}</p>
+    <div className="fixed inset-0 flex items-center justify-center bg-black/70 z-50">
+      <div className="bg-white p-6 rounded shadow-md max-w-md w-full">
+        <h2 className="text-lg font-semibold mb-2">{title}</h2>
+        <p className="mb-4">{message}</p>
         <div className="flex justify-end space-x-2">
           <button
             onClick={onCancel}
-            className="px-4 py-2 text-gray-700 border border-gray-300 rounded hover:bg-gray-100"
+            className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
           >
             Cancel
           </button>

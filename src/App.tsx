@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Navigation from "./components/Navigation";
 import Login from "./components/Login";
 import Dashboard from "./components/Dashboard";
-import TimeEntryForm from "./components/TimeEntryForm";
+import ProjectDetails from "./components/ProjectDetails";
 import PrivateRoute from "./components/PrivateRoute";
 
 function App() {
@@ -26,7 +26,7 @@ function App() {
               path="/projects/:id"
               element={
                 <PrivateRoute>
-                  <TimeEntryForm />
+                  <ProjectDetails />
                 </PrivateRoute>
               }
             />

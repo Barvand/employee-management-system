@@ -1,11 +1,14 @@
 // Enhanced /src/pages/Dashboard.tsx
 import React, { useEffect, useState } from "react";
 import { databases } from "/appwriteConfig";
+import { Client, Account, ID } from "appwrite";
 import { v4 as uuidv4 } from "uuid";
-import ConfirmModal from "./ConfirmModal";
+import ProjectForm from "../components/ProjectForm";
+import ProjectItem from "../components/ProjectItem";
 
 const DB_ID = "688cf1f200298c50183d";
 const PROJECTS_COLLECTION = "688cf200000b6fdbfe61";
+const PROJECT_LOGS_COLLECTION = "688cf3c800172f6bf40c"; // <- your actual logs collection ID
 
 interface Project {
   $id: string;
@@ -17,14 +20,15 @@ interface Project {
   createdAt: string;
 }
 
+const client = new Client()
+  .setEndpoint("https://fra.cloud.appwrite.io/v1")
+  .setProject("688cf0f10002a903a086");
+
 const Dashboard: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [search, setSearch] = useState("");
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editFormData, setEditFormData] = useState<Partial<Project>>({});
-  const [showModal, setShowModal] = useState(false);
-  const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"current" | "expired">("current");
+  const [showAddProject, setShowAddProject] = useState(false);
   const [formData, setFormData] = useState({
     id: uuidv4(),
     name: "",
@@ -52,20 +56,31 @@ const Dashboard: React.FC = () => {
     fetchProjects();
   }, []);
 
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]:
-        name === "totalHours"
-          ? Number(value)
-          : name === "isActive"
-          ? value === "true"
-          : value,
-    }));
-  };
+  const account = new Account(client);
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const userData = await account.get();
+        setUser(userData);
+      } catch (err) {
+        console.error("Failed to fetch user:", err);
+      }
+    };
+    fetchUser();
+  }, []);
+
+  useEffect(() => {
+    if (error || success) {
+      const timer = setTimeout(() => {
+        setError("");
+        setSuccess("");
+      }, 4000); // Message disappears after 4 seconds
+
+      return () => clearTimeout(timer); // cleanup if component unmounts
+    }
+  }, [error, success]);
 
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,7 +92,12 @@ const Dashboard: React.FC = () => {
       return;
     }
 
-    const data = { ...formData, createdAt: new Date().toISOString() };
+    const data = {
+      ...formData,
+      createdAt: new Date().toISOString(),
+      createdBy: user?.name || "Unknown",
+      initialHours: formData.totalHours,
+    };
 
     try {
       const newProject = await databases.createDocument(
@@ -86,6 +106,23 @@ const Dashboard: React.FC = () => {
         uuidv4(),
         data
       );
+
+      if (user) {
+        await databases.createDocument(
+          DB_ID,
+          PROJECT_LOGS_COLLECTION,
+          ID.unique(),
+          {
+            projectId: newProject.$id,
+            userId: user.$id,
+            userName: user.name,
+            hoursAdded: formData.totalHours,
+            note: "Hours at creation",
+            timestamp: new Date().toISOString(),
+          }
+        );
+      }
+
       setProjects((prev) => [...prev, newProject]);
       setSuccess("Project created successfully.");
       setFormData({
@@ -100,60 +137,6 @@ const Dashboard: React.FC = () => {
     } catch (err) {
       console.error("Failed to create project:", err);
       setError("Something went wrong while creating the project.");
-    }
-  };
-
-  const handleDeleteProject = async (id: string) => {
-    try {
-      await databases.deleteDocument(DB_ID, PROJECTS_COLLECTION, id);
-      setProjects((prev) => prev.filter((p) => p.$id !== id));
-    } catch (err) {
-      console.error("Delete failed:", err);
-      setError("Failed to delete project.");
-    }
-  };
-
-  const startEdit = (project: Project) => {
-    setEditingId(project.$id);
-    setEditFormData({ ...project });
-  };
-
-  const handleEditChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setEditFormData((prev) => ({
-      ...prev,
-      [name]: name === "totalHours" ? Number(value) : value,
-    }));
-  };
-
-  const handleEditSave = async () => {
-    if (!editingId || !editFormData.name?.trim()) return;
-
-    // Remove unwanted system keys like $databaseId, $collectionId, $createdAt, etc.
-    const {
-      $id,
-      $databaseId,
-      $collectionId,
-      $createdAt,
-      $updatedAt,
-      ...safeData
-    } = editFormData;
-
-    try {
-      const updated = await databases.updateDocument(
-        DB_ID,
-        PROJECTS_COLLECTION,
-        editingId,
-        safeData
-      );
-      setProjects((prev) =>
-        prev.map((p) => (p.$id === editingId ? updated : p))
-      );
-      setEditingId(null);
-      setEditFormData({});
-    } catch (err) {
-      console.error("Update failed:", err);
-      setError("Failed to update project.");
     }
   };
 
@@ -209,154 +192,62 @@ const Dashboard: React.FC = () => {
         </div>
       )}
       {/* MAKE A SEPARATED COMPONENT  */}
-      <form
-        onSubmit={handleCreateProject}
-        className="space-y-4 bg-gray-50 p-4 rounded shadow mb-6"
-      >
-        <input
-          name="name"
-          value={formData.name}
-          onChange={handleInputChange}
-          placeholder="Project Name"
-          required
-          className="w-full p-2 border rounded"
-        />
-        <input
-          name="client"
-          value={formData.client}
-          onChange={handleInputChange}
-          placeholder="Client Name"
-          className="w-full p-2 border rounded"
-        />
-        <input
-          name="description"
-          value={formData.description}
-          onChange={handleInputChange}
-          placeholder="Description"
-          className="w-full p-2 border rounded"
-        />
-        <input
-          name="totalHours"
-          type="number"
-          value={formData.totalHours}
-          onChange={handleInputChange}
-          placeholder="Total Hours"
-          className="w-full p-2 border rounded"
-        />
-        <select
-          name="isActive"
-          value={formData.isActive.toString()}
-          onChange={handleInputChange}
-          className="w-full p-2 border rounded"
-        >
-          <option value="true">Active</option>
-          <option value="false">Inactive</option>
-        </select>
+      <div className="mb-6">
         <button
-          type="submit"
-          className="bg-blue-600 text-white px-4 py-2 rounded"
+          onClick={() => setShowAddProject((prev) => !prev)}
+          className="w-full text-left flex justify-between items-center bg-gray-100 px-4 py-3 rounded hover:bg-gray-200 transition"
         >
-          Create Project
+          <span className="text-xl font-semibold">Add New Project</span>
+          <svg
+            className={`w-5 h-5 transform transition-transform duration-300 ${
+              showAddProject ? "rotate-180" : ""
+            }`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 9l-7 7-7-7"
+            />
+          </svg>
         </button>
-      </form>
+
+        <div
+          className={`transition-all duration-300 ease-in-out overflow-hidden ${
+            showAddProject ? "max-h-[500px] mt-4" : "max-h-0"
+          }`}
+        >
+          <div className="p-4 bg-gray-50 rounded border">
+            <ProjectForm
+              formData={formData}
+              onChange={(e) => {
+                const { name, value } = e.target;
+                setFormData((prev) => ({
+                  ...prev,
+                  [name]:
+                    name === "totalHours"
+                      ? Number(value)
+                      : name === "isActive"
+                      ? value === "true"
+                      : value,
+                }));
+              }}
+              onSubmit={handleCreateProject}
+            />
+          </div>
+        </div>
+      </div>
       {/* MAKE A SEPARATED COMPONENT  */}
       <ul className="space-y-2">
         {filteredProjects.length === 0 ? (
           <p className="text-gray-600 text-sm">No projects found.</p>
         ) : (
           filteredProjects.map((project) => (
-            <li key={project.$id} className="p-4 border rounded bg-white">
-              {editingId === project.$id ? (
-                <div className="space-y-2">
-                  <input
-                    name="name"
-                    value={editFormData.name || ""}
-                    onChange={handleEditChange}
-                    className="w-full p-2 border rounded"
-                  />
-                  <input
-                    name="client"
-                    value={editFormData.client || ""}
-                    onChange={handleEditChange}
-                    className="w-full p-2 border rounded"
-                  />
-                  <input
-                    name="description"
-                    value={editFormData.description || ""}
-                    onChange={handleEditChange}
-                    className="w-full p-2 border rounded"
-                  />
-                  <input
-                    name="totalHours"
-                    type="number"
-                    value={editFormData.totalHours || 0}
-                    onChange={handleEditChange}
-                    className="w-full p-2 border rounded"
-                  />
-                  <button
-                    onClick={handleEditSave}
-                    className="bg-green-600 text-white px-3 py-1 rounded mr-2"
-                  >
-                    Save
-                  </button>
-                  <button
-                    onClick={() => setEditingId(null)}
-                    className="bg-gray-400 text-white px-3 py-1 rounded"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              ) : (
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h2 className="text-lg font-semibold">{project.name}</h2>
-                    <p className="text-sm text-gray-600">
-                      Client: {project.client || "N/A"} | Status:
-                      <span
-                        className={`font-semibold ${
-                          project.isActive ? "text-green-600" : "text-red-500"
-                        }`}
-                      >
-                        {" "}
-                        {project.isActive ? "Active" : "Inactive"}
-                      </span>
-                    </p>
-                    <p className=""> Total Hours: {project.totalHours}</p>
-                  </div>
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => startEdit(project)}
-                      className="text-blue-500 cursor-pointer"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowModal(true);
-                        setProjectToDelete(project.$id);
-                      }}
-                      className="text-red-600 cursor-pointer"
-                    >
-                      Delete
-                    </button>
-                    <ConfirmModal
-                      isOpen={showModal}
-                      onCancel={() => {
-                        setShowModal(false);
-                        setProjectToDelete(null);
-                      }}
-                      onConfirm={async () => {
-                        if (projectToDelete) {
-                          await handleDeleteProject(projectToDelete);
-                          setShowModal(false);
-                          setProjectToDelete(null);
-                        }
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
-            </li>
+            <ProjectItem key={project.$id} project={project} />
           ))
         )}
       </ul>

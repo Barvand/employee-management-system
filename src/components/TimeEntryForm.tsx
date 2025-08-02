@@ -20,7 +20,7 @@ const TimeEntryForm: React.FC<TimeEntryFormProps> = ({
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: any) => {
     e.preventDefault();
     setLoading(true);
 

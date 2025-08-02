@@ -19,6 +19,7 @@ const Login = () => {
     try {
       const session = await account.createEmailPasswordSession(email, password);
       navigate("/dashboard"); // or wherever your main page is
+      return session;
     } catch (err) {
       console.error(err);
       setError("Invalid email or password");
