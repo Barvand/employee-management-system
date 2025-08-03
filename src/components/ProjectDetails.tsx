@@ -27,6 +27,45 @@ const ProjectDetails: React.FC = () => {
   const [logs, setLogs] = useState<any[]>([]);
   const [user, setUser] = useState<any>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [addedHours, setAddedHours] = useState<number>(0);
+
+  const handleAddHours = async (projectId: string, hoursToAdd: number) => {
+    try {
+      const updated = await databases.updateDocument(
+        DB_ID,
+        PROJECTS_COLLECTION,
+        projectId,
+        {
+          totalHours: project.totalHours + hoursToAdd,
+        }
+      );
+
+      // Log the change
+      if (user) {
+        await databases.createDocument(
+          DB_ID,
+          PROJECT_LOGS_COLLECTION,
+          ID.unique(),
+          {
+            projectId,
+            userId: user.$id,
+            userName: user.name,
+            hoursAdded: hoursToAdd,
+            note: "Manual hour addition",
+            timestamp: new Date().toISOString(),
+          }
+        );
+      }
+
+      setProject(updated); // update state
+      setAddedHours(0);
+      setSuccess("Hours added successfully.");
+      fetchLogs(); // refresh logs
+    } catch (err) {
+      console.error("Failed to add hours:", err);
+      setError("Unable to add hours.");
+    }
+  };
 
   const fetchUser = async () => {
     try {
@@ -208,6 +247,31 @@ const ProjectDetails: React.FC = () => {
               Delete
             </button>
           </div>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleAddHours(project.$id, addedHours); // defined below
+            }}
+          >
+            <h2 className="my-5 text-xl font-bold border-t-1">
+              {" "}
+              Add hours to the project{" "}
+            </h2>
+            <input
+              type="number"
+              placeholder="Add hours"
+              value={addedHours}
+              onChange={(e) => setAddedHours(Number(e.target.value))}
+              min={1}
+              className="border p-1 rounded"
+            />
+            <button
+              type="submit"
+              className="bg-blue-500 text-white px-2 py-1 rounded ml-2"
+            >
+              Add Hours
+            </button>
+          </form>
           {logs.length > 0 && (
             <div className="mt-8">
               <h3 className="text-xl font-semibold mb-2">Hour History</h3>
