@@ -19,9 +19,13 @@ const Login = () => {
       const session = await account.createEmailPasswordSession(email, password);
       navigate("/dashboard");
       return session;
-    } catch (err) {
-      console.error(err);
-      setError("Invalid email or password");
+    } catch (err: any) {
+      console.error("Login error:", err);
+      if (err && err.message) {
+        setError(err.message);
+      } else {
+        setError("Something went wrong while trying to log in.");
+      }
     }
   };
 

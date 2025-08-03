@@ -62,6 +62,15 @@ const Dashboard: React.FC = () => {
   const account = new Account(client);
   const [user, setUser] = useState<any>(null);
 
+  const handleLogout = async () => {
+    try {
+      await account.deleteSession("current");
+      window.location.href = "/login"; // force full reload to clear state
+    } catch (err) {
+      console.error("Logout failed:", err);
+    }
+  };
+
   useEffect(() => {
     const fetchUser = async () => {
       try {
@@ -157,6 +166,14 @@ const Dashboard: React.FC = () => {
   return (
     <div className="p-4 max-w-4xl mx-auto">
       {/* MAKE A SEPARATED COMPONENT  */}
+      <div className="flex justify-end items-center mb-4">
+        <button
+          onClick={handleLogout}
+          className="text-sm text-red-600 hover:underline cursor-pointer"
+        >
+          Log out
+        </button>
+      </div>
       <div className="flex mb-4 space-x-4">
         <button
           onClick={() => setActiveTab("current")}
