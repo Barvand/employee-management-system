@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Account } from "appwrite";
 import { useNavigate } from "react-router-dom";
-import { client } from "../appwriteConfig"; // lowercase 'w'
+import { client } from "../appwriteConfig";
 
 const account = new Account(client);
 
@@ -12,7 +12,7 @@ const Login = () => {
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  const handleLogin = async (e) => {
+  const handleLogin = async (e: any) => {
     e.preventDefault();
     setError("");
 

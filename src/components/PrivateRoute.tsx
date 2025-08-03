@@ -1,8 +1,9 @@
 // /src/components/PrivateRoute.tsx
-import { useEffect, useState, ReactNode } from "react";
+import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { Account } from "appwrite";
-import { client } from "/appwriteConfig.js";
+import { client } from "../appwriteConfig";
 const account = new Account(client);
 
 interface PrivateRouteProps {

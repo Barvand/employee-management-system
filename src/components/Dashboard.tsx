@@ -1,7 +1,8 @@
 // Enhanced /src/pages/Dashboard.tsx
 import React, { useEffect, useState } from "react";
-import { databases } from "/appwriteConfig";
+import { databases } from "../appwriteConfig";
 import { Client, Account, ID } from "appwrite";
+import type { Models } from "appwrite";
 import { v4 as uuidv4 } from "uuid";
 import ProjectForm from "../components/ProjectForm";
 import ProjectItem from "../components/ProjectItem";
@@ -10,8 +11,7 @@ const DB_ID = "688cf1f200298c50183d";
 const PROJECTS_COLLECTION = "688cf200000b6fdbfe61";
 const PROJECT_LOGS_COLLECTION = "688cf3c800172f6bf40c"; // <- your actual logs collection ID
 
-interface Project {
-  $id: string;
+interface Project extends Models.Document {
   name: string;
   description?: string;
   client?: string;
@@ -44,8 +44,11 @@ const Dashboard: React.FC = () => {
   const fetchProjects = async () => {
     setError("");
     try {
-      const res = await databases.listDocuments(DB_ID, PROJECTS_COLLECTION);
-      setProjects(res.documents);
+      const res = await databases.listDocuments<Project>(
+        DB_ID,
+        PROJECTS_COLLECTION
+      );
+      setProjects(res.documents); // now this works fine
     } catch (err) {
       console.error("Failed to fetch projects:", err);
       setError("Unable to load projects. Please try again later.");
@@ -100,7 +103,7 @@ const Dashboard: React.FC = () => {
     };
 
     try {
-      const newProject = await databases.createDocument(
+      const newProject = await databases.createDocument<Project>(
         DB_ID,
         PROJECTS_COLLECTION,
         uuidv4(),

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { databases } from "/appwriteConfig";
+import { databases } from "../appwriteConfig";
 import ProjectForm from "../components/ProjectForm";
 import { Client, Account, ID, Query } from "appwrite";
 import ConfirmModal from "./ConfirmModal";
