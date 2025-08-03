@@ -1,4 +1,3 @@
-// /src/api/appwriteConfig.js
 import { Client, Databases } from "appwrite";
 
 const client = new Client()

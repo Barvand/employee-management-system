@@ -1,8 +1,8 @@
 // /src/pages/Login.jsx
 import { useState } from "react";
 import { Account } from "appwrite";
-import { client } from "/appwriteConfig";
 import { useNavigate } from "react-router-dom";
+import { client } from "../appwriteConfig"; // lowercase 'w'
 
 const account = new Account(client);
 
