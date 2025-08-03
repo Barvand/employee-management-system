@@ -60,6 +60,7 @@ const Dashboard: React.FC = () => {
   }, []);
 
   const account = new Account(client);
+  account.get().then(console.log).catch(console.error);
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
@@ -253,7 +254,6 @@ const Dashboard: React.FC = () => {
             <ProjectItem key={project.$id} project={project} />
           ))
         )}
-        
       </ul>
     </div>
   );
