@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Account } from "appwrite";
 import { useNavigate } from "react-router-dom";
 import { client } from "../appwriteConfig";
-
+import { useEffect } from "react";
 const account = new Account(client);
 
 const Login = () => {
@@ -25,6 +25,17 @@ const Login = () => {
       setError("Invalid email or password");
     }
   };
+
+  useEffect(() => {
+    account
+      .get()
+      .then((user) => {
+        console.log("Ping successful ✅", user);
+      })
+      .catch((err) => {
+        console.log("Ping sent but failed ❌", err.message);
+      });
+  }, []);
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100 px-4">

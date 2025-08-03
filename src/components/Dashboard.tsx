@@ -253,6 +253,7 @@ const Dashboard: React.FC = () => {
             <ProjectItem key={project.$id} project={project} />
           ))
         )}
+        
       </ul>
     </div>
   );
