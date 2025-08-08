@@ -5,6 +5,7 @@ import Login from "./components/Login";
 import Dashboard from "./components/Dashboard";
 import ProjectDetails from "./components/ProjectDetails";
 import PrivateRoute from "./components/PrivateRoute";
+import EmployeeDashboard from "./components/EmployeeDashboard";
 
 function App() {
   return (
@@ -27,6 +28,14 @@ function App() {
               element={
                 <PrivateRoute>
                   <ProjectDetails />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/employee-portal"
+              element={
+                <PrivateRoute>
+                  <EmployeeDashboard />
                 </PrivateRoute>
               }
             />
