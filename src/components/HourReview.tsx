@@ -6,7 +6,7 @@ function HourReview({ userId }) {
 
   useEffect(() => {
     if (userId) fetchLogs(userId);
-  }, [userId]);
+  }, [userId, fetchLogs]);
 
   return (
     <div>

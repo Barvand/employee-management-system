@@ -1,179 +1,77 @@
-// Enhanced /src/pages/Dashboard.tsx
-import React, { useEffect, useState } from "react";
-import { databases } from "../appwriteConfig";
-import { Client, Account, ID } from "appwrite";
-import type { Models } from "appwrite";
-import { v4 as uuidv4 } from "uuid";
-import ProjectForm from "../components/ProjectForm";
+// ===============================================
+// src/pages/Dashboard.tsx (refactored)
+// Keeps UI concerns here; data concerns live in hooks above
+// ===============================================
+import React, { useMemo, useState } from "react";
+import { useProjects, useCreateProject } from "../features/projects/queries";
+import { useUser } from "../features/auth/useUser";
+import type { CreateProjectInput } from "../features/projects/types";
+import ProjectForm from "../components/ProjectForm"; // reusing your existing components
 import ProjectItem from "../components/ProjectItem";
 
-const DB_ID = "688cf1f200298c50183d";
-const PROJECTS_COLLECTION = "688cf200000b6fdbfe61";
-const PROJECT_LOGS_COLLECTION = "688cf3c800172f6bf40c"; // <- your actual logs collection ID
+export default function Dashboard() {
+  const { user, logout } = useUser();
 
-interface Project extends Models.Document {
-  name: string;
-  description?: string;
-  client?: string;
-  totalHours: number;
-  isActive: boolean;
-  createdAt: string;
-}
-
-const client = new Client()
-  .setEndpoint("https://fra.cloud.appwrite.io/v1")
-  .setProject("688cf0f10002a903a086");
-
-const Dashboard: React.FC = () => {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<"current" | "expired">("current");
+  const [search, setSearch] = useState("");
   const [showAddProject, setShowAddProject] = useState(false);
-  const [formData, setFormData] = useState({
-    id: uuidv4(),
+
+  const queryParams = useMemo(
+    () => ({ isActive: activeTab === "current", search, limit: 100 }),
+    [activeTab, search]
+  );
+
+  const {
+    data: projects = [],
+    isLoading,
+    isError,
+    error,
+  } = useProjects(queryParams);
+
+  const [formData, setFormData] = useState<CreateProjectInput>({
     name: "",
     description: "",
     client: "",
     totalHours: 0,
     isActive: true,
-    createdAt: new Date().toISOString(),
   });
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
-  const fetchProjects = async () => {
-    setError("");
-    try {
-      const res = await databases.listDocuments<Project>(
-        DB_ID,
-        PROJECTS_COLLECTION
-      );
-      setProjects(res.documents); // now this works fine
-    } catch (err) {
-      console.error("Failed to fetch projects:", err);
-      setError("Unable to load projects. Please try again later.");
-    }
-  };
-
-  useEffect(() => {
-    fetchProjects();
-  }, []);
-
-  const account = new Account(client);
-  const [user, setUser] = useState<any>(null);
-
-  const handleLogout = async () => {
-    try {
-      await account.deleteSession("current");
-      window.location.href = "/login"; // force full reload to clear state
-    } catch (err) {
-      console.error("Logout failed:", err);
-    }
-  };
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const userData = await account.get();
-        setUser(userData);
-      } catch (err) {
-        console.error("Failed to fetch user:", err);
-      }
-    };
-    fetchUser();
-  }, []);
-
-  useEffect(() => {
-    if (error || success) {
-      const timer = setTimeout(() => {
-        setError("");
-        setSuccess("");
-      }, 4000); // Message disappears after 4 seconds
-
-      return () => clearTimeout(timer); // cleanup if component unmounts
-    }
-  }, [error, success]);
-
-  const handleCreateProject = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setSuccess("");
-
-    if (!formData.name.trim()) {
-      setError("Project name is required.");
-      return;
-    }
-
-    const data = {
-      ...formData,
-      createdAt: new Date().toISOString(),
-      createdBy: user?.name || "Unknown",
-      initialHours: formData.totalHours,
-    };
-
-    try {
-      const newProject = await databases.createDocument<Project>(
-        DB_ID,
-        PROJECTS_COLLECTION,
-        uuidv4(),
-        data
-      );
-
-      if (user) {
-        await databases.createDocument(
-          DB_ID,
-          PROJECT_LOGS_COLLECTION,
-          ID.unique(),
-          {
-            projectId: newProject.$id,
-            userId: user.$id,
-            userName: user.name,
-            hoursAdded: formData.totalHours,
-            note: "Hours at creation",
-            timestamp: new Date().toISOString(),
-          }
-        );
-      }
-
-      setProjects((prev) => [...prev, newProject]);
-      setSuccess("Project created successfully.");
+  const createMutation = useCreateProject({
+    withLog: true,
+    user: user ? { id: user.$id, name: user.name } : undefined,
+    onCreated: () => {
       setFormData({
-        id: uuidv4(),
         name: "",
         description: "",
         client: "",
         totalHours: 0,
         isActive: true,
-        createdAt: new Date().toISOString(),
       });
-    } catch (err) {
-      console.error("Failed to create project:", err);
-      setError("Something went wrong while creating the project.");
-    }
-  };
+      setShowAddProject(false);
+    },
+  });
 
-  {
-    /* MAKE A SEPARATED COMPONENT  */
-  }
-  const filteredProjects = projects
-    .filter((project) =>
-      activeTab === "current" ? project.isActive : !project.isActive
-    )
-    .filter((project) =>
-      project.name.toLowerCase().includes(search.toLowerCase())
+  const filtered = useMemo(() => {
+    return projects.filter(
+      (p) =>
+        (activeTab === "current" ? p.isActive : !p.isActive) &&
+        p.name.toLowerCase().includes(search.toLowerCase())
     );
+  }, [projects, activeTab, search]);
 
   return (
     <div className="p-4 max-w-4xl mx-auto">
-      {/* MAKE A SEPARATED COMPONENT  */}
+      {/* Header */}
       <div className="flex justify-end items-center mb-4">
         <button
-          onClick={handleLogout}
+          onClick={logout}
           className="text-sm text-red-600 hover:underline cursor-pointer"
         >
           Log out
         </button>
       </div>
+
+      {/* Tabs */}
       <div className="flex mb-4 space-x-4">
         <button
           onClick={() => setActiveTab("current")}
@@ -191,9 +89,11 @@ const Dashboard: React.FC = () => {
         >
           Expired Projects
         </button>
-        {/* MAKE A SEPARATED COMPONENT  */}
       </div>
+
       <h1 className="text-2xl font-bold mb-4">Projects Dashboard</h1>
+
+      {/* Search */}
       <input
         type="text"
         placeholder="Search projects..."
@@ -201,17 +101,16 @@ const Dashboard: React.FC = () => {
         onChange={(e) => setSearch(e.target.value)}
         className="w-full p-2 border rounded mb-4"
       />
-      {error && (
+
+      {/* Notices */}
+      {isError && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded mb-4">
-          {error}
+          {(error as any)?.message ||
+            "Unable to load projects. Please try again later."}
         </div>
       )}
-      {success && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-2 rounded mb-4">
-          {success}
-        </div>
-      )}
-      {/* MAKE A SEPARATED COMPONENT  */}
+
+      {/* Add Project Accordion */}
       <div className="mb-6">
         <button
           onClick={() => setShowAddProject((prev) => !prev)}
@@ -243,8 +142,8 @@ const Dashboard: React.FC = () => {
         >
           <div className="p-4 bg-gray-50 rounded border">
             <ProjectForm
-              formData={formData}
-              onChange={(e) => {
+              formData={formData as any}
+              onChange={(e: any) => {
                 const { name, value } = e.target;
                 setFormData((prev) => ({
                   ...prev,
@@ -256,23 +155,31 @@ const Dashboard: React.FC = () => {
                       : value,
                 }));
               }}
-              onSubmit={handleCreateProject}
+              onSubmit={(e: React.FormEvent) => {
+                e.preventDefault();
+                if (!formData.name.trim()) return;
+                createMutation.mutate(formData);
+              }}
             />
           </div>
         </div>
       </div>
-      {/* MAKE A SEPARATED COMPONENT  */}
+
+      {/* List */}
       <ul className="space-y-2">
-        {filteredProjects.length === 0 ? (
+        {isLoading ? (
+          <p className="text-gray-600 text-sm">Loading…</p>
+        ) : filtered.length === 0 ? (
           <p className="text-gray-600 text-sm">No projects found.</p>
         ) : (
-          filteredProjects.map((project) => (
-            <ProjectItem key={project.$id} project={project} />
+          filtered.map((project) => (
+            <ProjectItem
+              key={project.id}
+              project={{ ...project, $id: project.id } as any}
+            />
           ))
         )}
       </ul>
     </div>
   );
-};
-
-export default Dashboard;
+}
