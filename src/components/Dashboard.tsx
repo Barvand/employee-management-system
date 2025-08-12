@@ -11,7 +11,6 @@ import ProjectItem from "../components/ProjectItem";
 
 export default function Dashboard() {
   const { user, logout } = useUser();
-
   const [activeTab, setActiveTab] = useState<"current" | "expired">("current");
   const [search, setSearch] = useState("");
   const [showAddProject, setShowAddProject] = useState(false);

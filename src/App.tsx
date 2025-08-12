@@ -5,12 +5,11 @@ import Login from "./components/Login";
 import Dashboard from "./components/Dashboard";
 import ProjectDetails from "./components/ProjectDetails";
 import PrivateRoute from "./components/PrivateRoute";
-import EmployeeDashboard from "./components/EmployeeDashboard";
-
+import EmployeeDashboard from "./components/employee/EmployeeDashboard";
 
 // const query = useQuery({
-//   queryKey: [posts], 
-//   queryFn: 
+//   queryKey: [posts],
+//   queryFn:
 // })
 
 function App() {
