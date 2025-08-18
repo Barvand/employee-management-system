@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { account } from "../../appwriteConfig";
+import { account } from "../../lib/appwrite";
 
 export function useUser() {
   const [user, setUser] = useState<null | any>(null);

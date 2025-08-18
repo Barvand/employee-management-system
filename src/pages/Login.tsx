@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Account } from "appwrite";
 import { useNavigate } from "react-router-dom";
-import { client } from "../appwriteConfig";
+import { client } from "../lib/appwrite";
 const account = new Account(client);
 
 const Login = () => {

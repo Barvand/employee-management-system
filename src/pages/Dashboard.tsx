@@ -1,13 +1,9 @@
-// ===============================================
-// src/pages/Dashboard.tsx (refactored)
-// Keeps UI concerns here; data concerns live in hooks above
-// ===============================================
 import React, { useMemo, useState } from "react";
-import { useProjects, useCreateProject } from "../features/projects/queries";
+import fetchProjects from "../api/projects";
 import { useUser } from "../features/auth/useUser";
-import type { CreateProjectInput } from "../features/projects/types";
 import ProjectForm from "../components/ProjectForm"; // reusing your existing components
 import ProjectItem from "../components/ProjectItem";
+import { useQuery } from "@tanstack/react-query";
 
 export default function Dashboard() {
   const { user, logout } = useUser();
@@ -15,40 +11,37 @@ export default function Dashboard() {
   const [search, setSearch] = useState("");
   const [showAddProject, setShowAddProject] = useState(false);
 
-  const queryParams = useMemo(
-    () => ({ isActive: activeTab === "current", search, limit: 100 }),
-    [activeTab, search]
-  );
-
   const {
     data: projects = [],
     isLoading,
-    isError,
     error,
-  } = useProjects(queryParams);
-
-  const [formData, setFormData] = useState<CreateProjectInput>({
-    name: "",
-    description: "",
-    client: "",
-    totalHours: 0,
-    isActive: true,
+  } = useQuery({
+    queryKey: ["projects"],
+    queryFn: fetchProjects,
   });
 
-  const createMutation = useCreateProject({
-    withLog: true,
-    user: user ? { id: user.$id, name: user.name } : undefined,
-    onCreated: () => {
-      setFormData({
-        name: "",
-        description: "",
-        client: "",
-        totalHours: 0,
-        isActive: true,
-      });
-      setShowAddProject(false);
-    },
-  });
+  // const [formData, setFormData] = useState<CreateProjectInput>({
+  //   name: "",
+  //   description: "",
+  //   client: "",
+  //   totalHours: 0,
+  //   isActive: true,
+  // });
+
+  // const createMutation = useCreateProject({
+  //   withLog: true,
+  //   user: user ? { id: user.$id, name: user.name } : undefined,
+  //   onCreated: () => {
+  //     setFormData({
+  //       name: "",
+  //       description: "",
+  //       client: "",
+  //       totalHours: 0,
+  //       isActive: true,
+  //     });
+  //     setShowAddProject(false);
+  //   },
+  // });
 
   const filtered = useMemo(() => {
     return projects.filter(
@@ -102,7 +95,7 @@ export default function Dashboard() {
       />
 
       {/* Notices */}
-      {isError && (
+      {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded mb-4">
           {(error as any)?.message ||
             "Unable to load projects. Please try again later."}
@@ -139,7 +132,7 @@ export default function Dashboard() {
             showAddProject ? "max-h-[500px] mt-4" : "max-h-0"
           }`}
         >
-          <div className="p-4 bg-gray-50 rounded border">
+          {/* <div className="p-4 bg-gray-50 rounded border">
             <ProjectForm
               formData={formData as any}
               onChange={(e: any) => {
@@ -160,7 +153,7 @@ export default function Dashboard() {
                 createMutation.mutate(formData);
               }}
             />
-          </div>
+          </div> */}
         </div>
       </div>
 

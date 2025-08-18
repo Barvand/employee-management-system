@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { Account } from "appwrite";
-import { client } from "../appwriteConfig";
+import { client } from "../lib/appwrite";
 const account = new Account(client);
 
 interface PrivateRouteProps {

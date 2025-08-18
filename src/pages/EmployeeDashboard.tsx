@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { useProjectStore } from "../../stores/ProjectStore";
-import { databases, account } from "../../appwriteConfig";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { databases, account } from "../lib/appwrite";
 import { ID } from "appwrite";
-import HourReview from "../HourReview";
+import HourReview from "../components/HourReview";
+import fetchProjects from "../api/projects"; // Adjust the import path as needed
 
 const DB_ID = "688cf1f200298c50183d";
-const COLLECTION_ID = "688cf3c800172f6bf40c";
+const LOGS_COLLECTION_ID = "688cf3c800172f6bf40c";
 
 interface LogFormData {
   projectId: string;
@@ -17,13 +18,32 @@ interface LogFormData {
 }
 
 function EmployeeDashboard() {
-  const { projects, isLoading, error, fetchProjects } = useProjectStore();
+  const queryClient = useQueryClient();
 
   const [user, setUser] = useState<{
     $id: string;
-    name?: string;
-    email?: string;
   } | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    account
+      .get()
+      .then((u) => mounted && setUser(u))
+      .catch(() => mounted && setUser(null))
+      .finally(() => mounted && console.log("User fetch complete"));
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const {
+    data: projects = [],
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["projects"],
+    queryFn: fetchProjects,
+  });
 
   const [formData, setFormData] = useState<LogFormData>({
     projectId: "",
@@ -33,18 +53,12 @@ function EmployeeDashboard() {
     breakMinutes: 0,
     note: "",
   });
-
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // week state for the right panel (you can wire this into HourReview if it supports it)
   const [weekOffset, setWeekOffset] = useState(0);
-
-  useEffect(() => {
-    fetchProjects();
-    account.get().then(setUser).catch(console.error);
-  }, [fetchProjects]);
 
   // live preview of worked hours
   const preview = useMemo(() => {
@@ -82,7 +96,8 @@ function EmployeeDashboard() {
 
     try {
       const currentUser = await account.get();
-
+      setUser(currentUser);
+      console.log("Current user:", currentUser);
       const start = new Date(`${formData.date}T${formData.startTime}`);
       const end = new Date(`${formData.date}T${formData.endTime}`);
       const breakMs = formData.breakMinutes * 60 * 1000;
@@ -97,10 +112,10 @@ function EmployeeDashboard() {
         return;
       }
 
-      await databases.createDocument(DB_ID, COLLECTION_ID, ID.unique(), {
+      await databases.createDocument(DB_ID, LOGS_COLLECTION_ID, ID.unique(), {
         userId: currentUser.$id,
         userName: currentUser.name || currentUser.email,
-        projectId: formData.projectId,
+        projectId: formData.projectId, // <-- id of selected project
         timestamp: new Date(`${formData.date}T00:00:00`).toISOString(),
         hoursAdded: Math.round(hoursWorked * 100) / 100,
         note: formData.note || "",
@@ -118,6 +133,13 @@ function EmployeeDashboard() {
         breakMinutes: 0,
         note: "",
       });
+
+      // Invalidate and refetch the user logs to update HourReview
+      if (currentUser) {
+        await queryClient.invalidateQueries({
+          queryKey: ["logs", "user", currentUser.$id],
+        });
+      }
     } catch (err: any) {
       console.error(err);
       setSubmitError(err.message || "Something went wrong.");
@@ -129,7 +151,7 @@ function EmployeeDashboard() {
   if (isLoading) return <p className="p-6">Loading projects...</p>;
   if (error) return <p className="p-6 text-red-600">Error: {error}</p>;
 
-  // helpers for “Week 21” title – shows the ISO week number based on offset
+  // helpers for "Week 21" title – shows the ISO week number based on offset
   const current = new Date();
   const monday = new Date(current);
   const day = (current.getDay() + 6) % 7; // 0=Mon
@@ -279,41 +301,24 @@ function EmployeeDashboard() {
           </section>
         </div>
 
-        {/* RIGHT: weekly panel */}
         <aside className="rounded-lg bg-neutral-200 p-6 lg:sticky lg:top-8 lg:h-fit">
           <div className="mb-4 flex items-center justify-center gap-6">
             <button
-              aria-label="Previous week"
-              className="text-xl"
               onClick={() => setWeekOffset((w) => w - 1)}
+              aria-label="Previous week"
             >
               ←
             </button>
             <h3 className="text-2xl font-bold">Week {weekNumber}</h3>
             <button
-              aria-label="Next week"
-              className="text-xl"
               onClick={() => setWeekOffset((w) => w + 1)}
+              aria-label="Next week"
             >
               →
             </button>
           </div>
 
-          {/* Inject your existing weekly list */}
-          <div className="space-y-5">
-            {/* If HourReview already renders its own blocks, great.
-                Otherwise you can style it inside here. */}
-            {user && <HourReview userId={user.$id} />}
-          </div>
-
-          {/* Example footer total (you can compute inside HourReview and render here if you prefer) */}
-          <div className="mt-6 border-t pt-4 text-sm">
-            <div className="flex justify-between">
-              <span className="font-medium">Total hours:</span>
-              {/* Replace with your real computed weekly total */}
-              <span className="opacity-80">—</span>
-            </div>
-          </div>
+          {user && <HourReview userId={user.$id} weekOffset={weekOffset} />}
         </aside>
       </div>
     </div>

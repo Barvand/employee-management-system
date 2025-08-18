@@ -1,11 +1,11 @@
 // App.tsx or App.jsx
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import Navigation from "./components/Navigation";
-import Login from "./components/Login";
-import Dashboard from "./components/Dashboard";
+import Navigation from "./layout/Navigation";
+import Login from "./pages/Login";
+import Dashboard from "./pages/Dashboard";
 import ProjectDetails from "./components/ProjectDetails";
-import PrivateRoute from "./components/PrivateRoute";
-import EmployeeDashboard from "./components/employee/EmployeeDashboard";
+import PrivateRoute from "./app/PrivateRoute";
+import EmployeeDashboard from "./pages/EmployeeDashboard";
 
 // const query = useQuery({
 //   queryKey: [posts],
