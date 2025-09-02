@@ -4,14 +4,15 @@ import { databases } from "../lib/appwrite";
 import ProjectForm from "../components/ProjectForm";
 import { Client, Account, ID, Query } from "appwrite";
 import ConfirmModal from "./ConfirmModal";
+import type { Project } from "../types.ts";
 
 const DB_ID = "688cf1f200298c50183d";
 const PROJECTS_COLLECTION = "688cf200000b6fdbfe61";
-const PROJECT_LOGS_COLLECTION = "688cf3c800172f6bf40c"; // Replace with your actual collection ID
+const PROJECT_LOGS_COLLECTION = "688cf3c800172f6bf40c";
 
 const client = new Client()
-  .setEndpoint("https://fra.cloud.appwrite.io/v1") // Or your custom endpoint
-  .setProject("688cf0f10002a903a086"); // Replace with your actual project ID
+  .setEndpoint("https://fra.cloud.appwrite.io/v1")
+  .setProject("688cf0f10002a903a086");
 
 const account = new Account(client);
 
@@ -19,7 +20,7 @@ const ProjectDetails: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const [project, setProject] = useState<any>(null);
+  const [project, setProject] = useState<Project | null>(null);
   const [editFormData, setEditFormData] = useState<any>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [error, setError] = useState("");
@@ -27,45 +28,8 @@ const ProjectDetails: React.FC = () => {
   const [logs, setLogs] = useState<any[]>([]);
   const [user, setUser] = useState<any>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [addedHours, setAddedHours] = useState<number>(0);
 
-  const handleAddHours = async (projectId: string, hoursToAdd: number) => {
-    try {
-      const updated = await databases.updateDocument(
-        DB_ID,
-        PROJECTS_COLLECTION,
-        projectId,
-        {
-          totalHours: project.totalHours + hoursToAdd,
-        }
-      );
-
-      // Log the change
-      if (user) {
-        await databases.createDocument(
-          DB_ID,
-          PROJECT_LOGS_COLLECTION,
-          ID.unique(),
-          {
-            projectId,
-            userId: user.$id,
-            userName: user.name,
-            hoursAdded: hoursToAdd,
-            note: "Manual hour addition",
-            timestamp: new Date().toISOString(),
-          }
-        );
-      }
-
-      setProject(updated); // update state
-      setAddedHours(0);
-      setSuccess("Hours added successfully.");
-      fetchLogs(); // refresh logs
-    } catch (err) {
-      console.error("Failed to add hours:", err);
-      setError("Unable to add hours.");
-    }
-  };
+  const totalHours = logs.reduce((sum, log) => sum + (log.hoursAdded || 0), 0);
 
   const fetchUser = async () => {
     try {
@@ -79,11 +43,11 @@ const ProjectDetails: React.FC = () => {
   const fetchProject = async () => {
     try {
       const res = await databases.getDocument(DB_ID, PROJECTS_COLLECTION, id!);
-      setProject(res);
+      setProject(res as Project);
       setEditFormData(res); // preload edit form
     } catch (err) {
       console.error("Failed to fetch project:", err);
-      setError("Project not found.");
+      setError("Prosjekt ikke funnet.");
     }
   };
 
@@ -107,17 +71,14 @@ const ProjectDetails: React.FC = () => {
   }, [id]);
 
   const handleEditChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >
   ) => {
     const { name, value } = e.target;
     setEditFormData((prev: any) => ({
       ...prev,
-      [name]:
-        name === "totalHours"
-          ? Number(value)
-          : name === "isActive"
-          ? value === "true"
-          : value,
+      [name]: value,
     }));
   };
 
@@ -127,19 +88,21 @@ const ProjectDetails: React.FC = () => {
     setSuccess("");
 
     try {
-      const oldHours = project.totalHours;
-      const newHours = editFormData.totalHours;
-      const hoursAdded = newHours - oldHours;
+      const updated = await databases.updateDocument(
+        DB_ID,
+        PROJECTS_COLLECTION,
+        id!,
+        {
+          name: editFormData.name,
+          description: editFormData.description,
+          status: editFormData.status,
+          startDate: editFormData.startDate || null,
+          completionDate: editFormData.completionDate || null,
+        }
+      );
 
-      await databases.updateDocument(DB_ID, PROJECTS_COLLECTION, id!, {
-        name: editFormData.name,
-        client: editFormData.client,
-        description: editFormData.description,
-        totalHours: newHours,
-        isActive: editFormData.isActive,
-      });
-
-      if (hoursAdded !== 0 && user) {
+      // Log the update
+      if (user) {
         await databases.createDocument(
           DB_ID,
           PROJECT_LOGS_COLLECTION,
@@ -148,20 +111,20 @@ const ProjectDetails: React.FC = () => {
             projectId: id,
             userId: user.$id,
             userName: user.name,
-            hoursAdded,
-            note: editFormData.note || "",
+            action: "updated",
+            note: "Prosjekt oppdatert",
             timestamp: new Date().toISOString(),
           }
         );
       }
 
-      setSuccess("Project updated successfully.");
+      setProject(updated as Project);
+      setSuccess("Prosjekt oppdatert.");
       setIsEditing(false);
-      fetchProject();
       fetchLogs();
     } catch (err) {
       console.error("Update failed:", err);
-      setError("Failed to update project.");
+      setError("Kunne ikke oppdatere prosjekt.");
     }
   };
 
@@ -171,22 +134,48 @@ const ProjectDetails: React.FC = () => {
       navigate("/"); // back to dashboard
     } catch (err) {
       console.error("Delete failed:", err);
-      setError("Failed to delete project.");
+      setError("Kunne ikke slette prosjekt.");
     }
   };
 
-  if (error) return <div className="text-red-500">{error}</div>;
-  if (!project) return <div>Loading...</div>;
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "aktiv":
+        return "text-green-600";
+      case "avsluttet":
+        return "text-blue-600";
+      case "inaktiv":
+        return "text-red-500";
+      default:
+        return "text-gray-500";
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case "aktiv":
+        return "Aktiv";
+      case "avsluttet":
+        return "Avsluttet";
+      case "inaktiv":
+        return "Inaktiv";
+      default:
+        return status;
+    }
+  };
+
+  if (error) return <div className="text-red-500 p-4">{error}</div>;
+  if (!project) return <div className="p-4">Laster...</div>;
 
   return (
     <div className="max-w-3xl mx-auto p-4">
       <Link to="/" className="text-blue-600 hover:underline">
-        &larr; Back to Dashboard
+        &larr; Tilbake til Dashboard
       </Link>
 
       {isEditing ? (
         <>
-          <h2 className="text-xl font-semibold mt-6 mb-2">Edit Project</h2>
+          <h2 className="text-xl font-semibold mt-6 mb-2">Rediger Prosjekt</h2>
           <ProjectForm
             formData={editFormData}
             onChange={handleEditChange}
@@ -197,110 +186,116 @@ const ProjectDetails: React.FC = () => {
             onClick={() => setIsEditing(false)}
             className="text-sm text-gray-600 mt-2 underline"
           >
-            Cancel
+            Avbryt
           </button>
         </>
       ) : (
         <>
           <h1 className="text-2xl font-bold mt-4">{project.name}</h1>
-          <p className="mt-2 text-gray-600">
-            Client: {project.client || "N/A"}
-          </p>
-          <p className="mt-2">{project.description}</p>
-          <p className="mt-2">Total Hours: {project.totalHours}</p>
-          <p className="mt-2">
-            Status:{" "}
-            <span
-              className={project.isActive ? "text-green-600" : "text-red-500"}
-            >
-              {project.isActive ? "Active" : "Inactive"}
-            </span>
-          </p>
-          <p className="mt-2 text-sm text-gray-500">
-            Created At: {new Date(project.createdAt).toLocaleString()}
-          </p>
-          {project.createdBy && (
-            <p className="mt-2 text-sm text-gray-600">
-              Created by:{" "}
-              <span className="font-semibold">{project.createdBy}</span>
-            </p>
-          )}
 
-          {project.initialHours !== undefined && (
-            <p className="mt-2 text-sm text-gray-600">
-              Initial hours logged:{" "}
-              <span className="font-semibold">{project.initialHours}</span>
-            </p>
-          )}
+          <div className="mt-4 space-y-3 bg-gray-50 p-4 rounded">
+            <div>
+              <span className="font-medium">Beskrivelse:</span>
+              <p className="mt-1">
+                {project.description || "Ingen beskrivelse"}
+              </p>
+            </div>
 
-          <div className="flex space-x-4 mt-4">
+            <div>
+              <span className="font-medium">Status:</span>
+              <span
+                className={`ml-2 font-semibold ${getStatusColor(
+                  project.status
+                )}`}
+              >
+                {getStatusText(project.status)}
+              </span>
+            </div>
+
+            {project.startDate && (
+              <div>
+                <span className="font-medium">Oppstart:</span>
+                <span className="ml-2">
+                  {new Date(project.startDate).toLocaleDateString("no-NO")}
+                </span>
+              </div>
+            )}
+
+            {project.completionDate && (
+              <div>
+                <span className="font-medium">Ferdigstilt:</span>
+                <span className="ml-2">
+                  {new Date(project.completionDate).toLocaleDateString("no-NO")}
+                </span>
+              </div>
+            )}
+
+            <div className="text-sm text-gray-500 pt-2 border-t">
+              {project.createdBy && (
+                <p>
+                  Opprettet av:{" "}
+                  <span className="font-semibold">{project.createdBy}</span>
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex space-x-4 mt-6">
             <button
               onClick={() => setIsEditing(true)}
-              className="bg-blue-600 text-white px-4 py-2 rounded"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition-colors"
             >
-              Edit
+              Rediger
             </button>
             <button
               onClick={() => setShowConfirmModal(true)}
-              className="bg-red-600 text-white px-4 py-2 rounded"
+              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition-colors"
             >
-              Delete
+              Slett
             </button>
           </div>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleAddHours(project.$id, addedHours); // defined below
-            }}
-          >
-            <h2 className="my-5 text-xl font-bold border-t-1">
-              {" "}
-              Add hours to the project{" "}
-            </h2>
-            <input
-              type="number"
-              placeholder="Add hours"
-              value={addedHours}
-              onChange={(e) => setAddedHours(Number(e.target.value))}
-              min={1}
-              className="border p-1 rounded"
-            />
-            <button
-              type="submit"
-              className="bg-blue-500 text-white px-2 py-1 rounded ml-2"
-            >
-              Add Hours
-            </button>
-          </form>
+
           {logs.length > 0 && (
             <div className="mt-8">
-              <h3 className="text-xl font-semibold mb-2">Hour History</h3>
+              <h3 className="text-xl font-semibold mb-4">Aktivitetslogg</h3>
+              <h2 className="text-xl font-bold">{project.name}</h2>
+              <p className="text-gray-700">Totalt antall timer: {totalHours}</p>
+
               <ul className="space-y-3">
                 {logs.map((log) => (
                   <li key={log.$id} className="p-3 bg-gray-100 rounded">
                     <p>
-                      <span className="font-semibold">{log.userName}</span>{" "}
-                      added{" "}
-                      <span className="font-semibold">{log.hoursAdded}</span>{" "}
-                      hours
+                      <span className="font-semibold">{log.userName}</span>
+                      {log.action && <span> {log.action}</span>}
+                      {log.hoursAdded && (
+                        <span>
+                          {" "}
+                          la til{" "}
+                          <span className="font-semibold">
+                            {log.hoursAdded}
+                          </span>{" "}
+                          timer
+                        </span>
+                      )}
                     </p>
                     {log.note && (
                       <p className="text-sm text-gray-600 italic">
-                        “{log.note}”
+                        "{log.note}"
                       </p>
                     )}
                     <p className="text-xs text-gray-500">
-                      {new Date(log.timestamp).toLocaleString()}
+                      {new Date(log.timestamp).toLocaleString("no-NO")}
                     </p>
                   </li>
                 ))}
               </ul>
             </div>
           )}
+
           {showConfirmModal && (
             <ConfirmModal
               title={project.name}
-              message="Are you sure you want to delete this project? This action cannot be undone."
+              message="Er du sikker på at du vil slette dette prosjektet? Denne handlingen kan ikke angres."
               onConfirm={() => {
                 handleDelete();
                 setShowConfirmModal(false);

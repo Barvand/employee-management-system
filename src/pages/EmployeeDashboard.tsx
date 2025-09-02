@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { databases, account } from "../lib/appwrite";
 import { ID } from "appwrite";
 import HourReview from "../components/HourReview";
-import fetchProjects from "../api/projects"; // Adjust the import path as needed
+import { fetchProjects } from "../api/projects";
 
 const DB_ID = "688cf1f200298c50183d";
 const LOGS_COLLECTION_ID = "688cf3c800172f6bf40c";
@@ -149,7 +149,10 @@ function EmployeeDashboard() {
   };
 
   if (isLoading) return <p className="p-6">Loading projects...</p>;
-  if (error) return <p className="p-6 text-red-600">Error: {error}</p>;
+  if (error)
+    return (
+      <p className="p-6 text-red-600">Error: {error ? error.message : null}</p>
+    );
 
   // helpers for "Week 21" title – shows the ISO week number based on offset
   const current = new Date();

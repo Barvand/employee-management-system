@@ -2,15 +2,10 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Navigation from "./layout/Navigation";
 import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
 import ProjectDetails from "./components/ProjectDetails";
 import PrivateRoute from "./app/PrivateRoute";
 import EmployeeDashboard from "./pages/EmployeeDashboard";
-
-// const query = useQuery({
-//   queryKey: [posts],
-//   queryFn:
-// })
+import AdminDashboard from "./pages/AdminDashboard";
 
 function App() {
   return (
@@ -21,15 +16,9 @@ function App() {
           <Routes>
             <Route path="/login" element={<Login />} />
 
-            {/* Protected Routes */}
-            <Route
-              path="/dashboard"
-              element={<PrivateRoute>{<Dashboard />}</PrivateRoute>}
-            />
-
             {/* Example: Protected route with a form */}
             <Route
-              path="/projects/:id"
+              path="admin/projects/:id"
               element={
                 <PrivateRoute>
                   <ProjectDetails />
@@ -37,10 +26,18 @@ function App() {
               }
             />
             <Route
-              path="/employee-portal"
+              path="/employee-dashboard"
               element={
                 <PrivateRoute>
                   <EmployeeDashboard />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/admin-dashboard"
+              element={
+                <PrivateRoute>
+                  <AdminDashboard />
                 </PrivateRoute>
               }
             />
@@ -48,7 +45,7 @@ function App() {
             {/* Default route */}
             <Route
               path="/"
-              element={<PrivateRoute>{<Dashboard />}</PrivateRoute>}
+              element={<PrivateRoute>{<AdminDashboard />}</PrivateRoute>}
             />
           </Routes>
         </main>
