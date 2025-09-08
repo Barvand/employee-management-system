@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { databases } from "../lib/appwrite";
 import ProjectForm from "../components/ProjectForm";
-import { Client, Account, ID, Query } from "appwrite";
+import { Query } from "appwrite";
 import type { Models } from "appwrite";
 import ConfirmModal from "./ConfirmModal";
 import type { Project } from "../types.ts";
@@ -10,12 +10,6 @@ import type { Project } from "../types.ts";
 const DB_ID = "688cf1f200298c50183d";
 const PROJECTS_COLLECTION = "688cf200000b6fdbfe61";
 const PROJECT_LOGS_COLLECTION = "688cf3c800172f6bf40c";
-
-const client = new Client()
-  .setEndpoint("https://fra.cloud.appwrite.io/v1")
-  .setProject("688cf0f10002a903a086");
-
-const account = new Account(client);
 
 const ProjectDetails: React.FC = () => {
   const { id } = useParams();
@@ -27,7 +21,6 @@ const ProjectDetails: React.FC = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [logs, setLogs] = useState<ProjectLog[]>([]);
-  const [user, setUser] = useState<any>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   type ProjectLog = Models.Document & {
@@ -41,15 +34,6 @@ const ProjectDetails: React.FC = () => {
   };
 
   const totalHours = logs.reduce((sum, log) => sum + (log.hoursAdded || 0), 0);
-
-  const fetchUser = async () => {
-    try {
-      const user = await account.get();
-      setUser(user);
-    } catch (err) {
-      console.error("Could not fetch user:", err);
-    }
-  };
 
   const fetchProject = async () => {
     try {
@@ -77,7 +61,6 @@ const ProjectDetails: React.FC = () => {
 
   useEffect(() => {
     fetchProject();
-    fetchUser();
     fetchLogs();
   }, [id]);
 
@@ -107,32 +90,18 @@ const ProjectDetails: React.FC = () => {
           name: editFormData.name,
           description: editFormData.description,
           status: editFormData.status,
-          startDate: editFormData.startDate || null,
-          completionDate: editFormData.completionDate || null,
+          startDate: editFormData.startDate
+            ? new Date(editFormData.startDate + "T00:00:00Z").toISOString()
+            : null,
+          completionDate: editFormData.completionDate
+            ? new Date(editFormData.completionDate + "T00:00:00Z").toISOString()
+            : null,
         }
       );
-
-      // Log the update
-      if (user) {
-        await databases.createDocument(
-          DB_ID,
-          PROJECT_LOGS_COLLECTION,
-          ID.unique(),
-          {
-            projectId: id,
-            userId: user.$id,
-            userName: user.name,
-            action: "updated",
-            note: "Prosjekt oppdatert",
-            timestamp: new Date().toISOString(),
-          }
-        );
-      }
 
       setProject(updated as any);
       setSuccess("Prosjekt oppdatert.");
       setIsEditing(false);
-      fetchLogs();
     } catch (err) {
       console.error("Update failed:", err);
       setError("Kunne ikke oppdatere prosjekt.");
