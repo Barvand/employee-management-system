@@ -1,52 +1,51 @@
-// src/components/ProjectItem.tsx
 import React from "react";
 import { Link } from "react-router-dom";
+import type { Project } from "../api/projects";
 
-interface Project {
-  $id: string;
-  name: string;
-  description?: string;
-  status: "inaktiv" | "aktiv" | "avsluttet";
-  startDate?: string;
-  completionDate?: string;
-  createdAt?: string;
-}
+// Normalize API status to Norwegian UI status
+type UiStatus = "aktiv" | "inaktiv" | "avsluttet";
+const toUiStatus = (s?: "active" | "inactive" | "completed"): UiStatus => {
+  const map = {
+    active: "aktiv",
+    inactive: "inaktiv",
+    completed: "avsluttet",
+  } as const;
+  return map[s ?? "active"];
+};
+
+const getStatusColor = (status: UiStatus) => {
+  switch (status) {
+    case "aktiv":
+      return "bg-green-100 text-green-800";
+    case "avsluttet":
+      return "bg-blue-100 text-blue-800";
+    case "inaktiv":
+      return "bg-red-100 text-red-800";
+  }
+};
+
+const getStatusText = (status: UiStatus) => {
+  switch (status) {
+    case "aktiv":
+      return "Aktiv";
+    case "avsluttet":
+      return "Avsluttet";
+    case "inaktiv":
+      return "Inaktiv";
+  }
+};
+
+const formatDate = (dateString?: string) =>
+  dateString
+    ? new Date(dateString).toLocaleDateString("no-NO", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      })
+    : null;
 
 const ProjectItem: React.FC<{ project: Project }> = ({ project }) => {
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "aktiv":
-        return "bg-green-100 text-green-800";
-      case "avsluttet":
-        return "bg-blue-100 text-blue-800";
-      case "inaktiv":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case "aktiv":
-        return "Aktiv";
-      case "avsluttet":
-        return "Avsluttet";
-      case "inaktiv":
-        return "Inaktiv";
-      default:
-        return status;
-    }
-  };
-
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return null;
-    return new Date(dateString).toLocaleDateString("no-NO", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
+  const uiStatus = toUiStatus(project.status as any);
 
   return (
     <li className="bg-white p-4 rounded border shadow-sm hover:shadow-md transition-shadow">
@@ -59,10 +58,10 @@ const ProjectItem: React.FC<{ project: Project }> = ({ project }) => {
               </h3>
               <span
                 className={`text-sm font-medium px-2 py-1 rounded-full ${getStatusColor(
-                  project.status
+                  uiStatus
                 )}`}
               >
-                {getStatusText(project.status)}
+                {getStatusText(uiStatus)}
               </span>
             </div>
 
@@ -76,9 +75,7 @@ const ProjectItem: React.FC<{ project: Project }> = ({ project }) => {
               {project.startDate && (
                 <span>Oppstart: {formatDate(project.startDate)}</span>
               )}
-              {project.completionDate && (
-                <span>Ferdig: {formatDate(project.completionDate)}</span>
-              )}
+
               {project.createdAt && (
                 <span>Opprettet: {formatDate(project.createdAt)}</span>
               )}

@@ -17,3 +17,4 @@ export type Log = {
   durationMinutes: number;
   note?: string;
 };
+

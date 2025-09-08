@@ -1,6 +1,6 @@
 // /src/components/TimeEntryForm.jsx
 import { useState } from "react";
-import { databases } from "../appwriteConfig";
+import { databases } from "../lib/appwrite";
 
 const DB_ID = "688cf1f200298c50183d";
 const PROJECTS_COLLECTION = "688cf200000b6fdbfe61";

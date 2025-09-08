@@ -20,9 +20,7 @@ interface LogFormData {
 function EmployeeDashboard() {
   const queryClient = useQueryClient();
 
-  const [user, setUser] = useState<{
-    $id: string;
-  } | null>(null);
+  const [user, setUser] = useState<any | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -170,9 +168,7 @@ function EmployeeDashboard() {
       <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-[1fr,420px]">
         {/* LEFT: form column */}
         <div>
-          <h2 className="text-2xl font-bold">
-            Hi {user?.name || "{Employee}"} How are you today?
-          </h2>
+          <h2 className="text-2xl font-bold">Hi How are you today?</h2>
 
           {/* Project card */}
           <section className="mt-6 rounded-lg bg-neutral-200 p-6">

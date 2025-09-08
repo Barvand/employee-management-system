@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { databases } from "../lib/appwrite";
 import ProjectForm from "../components/ProjectForm";
 import { Client, Account, ID, Query } from "appwrite";
+import type { Models } from "appwrite";
 import ConfirmModal from "./ConfirmModal";
 import type { Project } from "../types.ts";
 
@@ -25,9 +26,19 @@ const ProjectDetails: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [logs, setLogs] = useState<any[]>([]);
+  const [logs, setLogs] = useState<ProjectLog[]>([]);
   const [user, setUser] = useState<any>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+
+  type ProjectLog = Models.Document & {
+    projectId: string;
+    userId: string;
+    userName: string;
+    action?: "created" | "updated" | "deleted" | "hoursAdded";
+    note?: string;
+    hoursAdded?: number;
+    timestamp: string; // ISO
+  };
 
   const totalHours = logs.reduce((sum, log) => sum + (log.hoursAdded || 0), 0);
 
@@ -43,7 +54,7 @@ const ProjectDetails: React.FC = () => {
   const fetchProject = async () => {
     try {
       const res = await databases.getDocument(DB_ID, PROJECTS_COLLECTION, id!);
-      setProject(res as Project);
+      setProject(res as any);
       setEditFormData(res); // preload edit form
     } catch (err) {
       console.error("Failed to fetch project:", err);
@@ -58,7 +69,7 @@ const ProjectDetails: React.FC = () => {
         PROJECT_LOGS_COLLECTION,
         [Query.equal("projectId", id!), Query.orderDesc("timestamp")]
       );
-      setLogs(res.documents);
+      setLogs(res.documents as any);
     } catch (err) {
       console.error("Failed to fetch logs:", err);
     }
@@ -118,7 +129,7 @@ const ProjectDetails: React.FC = () => {
         );
       }
 
-      setProject(updated as Project);
+      setProject(updated as any);
       setSuccess("Prosjekt oppdatert.");
       setIsEditing(false);
       fetchLogs();

@@ -10,10 +10,10 @@ export interface Project {
   createdBy?: string;
 }
 
-export interface CreateProjectInput {
+export type CreateProjectInput = {
   name: string;
   description?: string;
-  status: "inaktiv" | "aktiv" | "avsluttet";
+  status: "aktiv" | "inaktiv" | "avsluttet";
   startDate?: string;
   completionDate?: string;
-}
+};

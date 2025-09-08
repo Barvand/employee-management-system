@@ -5,7 +5,7 @@ import ProjectForm from "../components/ProjectForm";
 import ProjectItem from "../components/ProjectItem";
 import { useQuery } from "@tanstack/react-query";
 import { useCreateProject } from "../hooks/projects";
-import type { Project, CreateProjectInput } from "../types.ts";
+import type { Project } from "../types.ts";
 import { client } from "../lib/appwrite.ts";
 
 export default function Dashboard() {
@@ -63,7 +63,7 @@ export default function Dashboard() {
     refetchOnWindowFocus: true,
   });
 
-  const [formData, setFormData] = useState<CreateProjectInput>({
+  const [formData, setFormData] = useState<any>({
     name: "",
     description: "",
     status: "aktiv",
@@ -95,9 +95,26 @@ export default function Dashboard() {
       .map((p) => {
         // Normalize without mutating the original object
         const legacy = (p as any)?.isActive;
-        const status: Project["status"] =
+        // Map possible status values to allowed types
+        const rawStatus =
           p.status ??
           (legacy !== undefined ? (legacy ? "aktiv" : "inaktiv") : "aktiv");
+        let status: Project["status"];
+        switch (rawStatus) {
+          case "aktiv":
+          case "active":
+            status = "aktiv";
+            break;
+          case "inaktiv":
+          case "inactive":
+            status = "inaktiv";
+            break;
+          case "completed":
+            status = "avsluttet";
+            break;
+          default:
+            status = "aktiv";
+        }
         const name = (p.name ?? "").toString();
 
         return { ...p, status, name };
@@ -230,7 +247,7 @@ export default function Dashboard() {
                 >
               ) => {
                 const { name, value } = e.target;
-                setFormData((prev) => ({
+                setFormData((prev: any) => ({
                   ...prev,
                   [name]: value,
                 }));
