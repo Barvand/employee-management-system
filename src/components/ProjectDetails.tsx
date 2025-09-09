@@ -90,12 +90,8 @@ const ProjectDetails: React.FC = () => {
           name: editFormData.name,
           description: editFormData.description,
           status: editFormData.status,
-          startDate: editFormData.startDate
-            ? new Date(editFormData.startDate + "T00:00:00Z").toISOString()
-            : null,
-          completionDate: editFormData.completionDate
-            ? new Date(editFormData.completionDate + "T00:00:00Z").toISOString()
-            : null,
+          startDate: editFormData.startDate,
+          completionDate: editFormData.completionDate,
         }
       );
 
@@ -204,9 +200,7 @@ const ProjectDetails: React.FC = () => {
             {project.completionDate && (
               <div>
                 <span className="font-medium">Ferdigstilt:</span>
-                <span className="ml-2">
-                  {new Date(project.completionDate).toLocaleDateString("no-NO")}
-                </span>
+                <span className="ml-2">{project.completionDate}</span>
               </div>
             )}
 
