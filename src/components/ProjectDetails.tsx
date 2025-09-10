@@ -116,9 +116,9 @@ const ProjectDetails: React.FC = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "aktiv":
+      case "active":
         return "text-green-600";
-      case "avsluttet":
+      case "finished":
         return "text-blue-600";
       case "inaktiv":
         return "text-red-500";
@@ -200,7 +200,9 @@ const ProjectDetails: React.FC = () => {
             {project.completionDate && (
               <div>
                 <span className="font-medium">Ferdigstilt:</span>
-                <span className="ml-2">{project.completionDate}</span>
+                <span className="ml-2">
+                  {new Date(project.completionDate).toLocaleDateString("no-NO")}
+                </span>
               </div>
             )}
 

@@ -171,7 +171,7 @@ function EmployeeDashboard() {
           <h2 className="text-2xl font-bold">Hi How are you today?</h2>
 
           {/* Project card */}
-          <section className="mt-6 rounded-lg bg-neutral-200 p-6">
+          <section className="mt-6 rounded-lg bg-neutral-100 p-6">
             <h3 className="text-2xl font-semibold">
               What project are you working on?
             </h3>
@@ -190,10 +190,15 @@ function EmployeeDashboard() {
               ))}
             </select>
           </section>
-
+          <div className="pt-2">
+            <p className="text-red-500 font-bold">
+              {" "}
+              Use your keyboard to enter the hours. e.g. 08:00 - 16:00
+            </p>
+          </div>
           {/* Times row */}
           <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-            <section className="rounded-lg bg-neutral-200 p-4">
+            <section className="rounded-lg bg-neutral-100 p-4">
               <label className="block text-sm font-medium">
                 What time did you start work?
               </label>
@@ -206,7 +211,7 @@ function EmployeeDashboard() {
               />
             </section>
 
-            <section className="rounded-lg bg-neutral-200 p-4">
+            <section className="rounded-lg bg-neutral-100 p-4">
               <label className="block text-sm font-medium">
                 What time did you end work?
               </label>
@@ -219,7 +224,7 @@ function EmployeeDashboard() {
               />
             </section>
 
-            <section className="rounded-lg bg-neutral-200 p-4">
+            <section className="rounded-lg bg-neutral-100 p-4">
               <label className="block text-sm font-medium">
                 Did you take a break?
               </label>
@@ -266,12 +271,9 @@ function EmployeeDashboard() {
           )}
 
           {/* Preview / status card */}
-          <section className="mt-6 rounded-lg bg-neutral-200 p-6">
+          <section className="mt-6 rounded-lg bg-neutral-100 p-6">
             {preview && preview.valid ? (
               <>
-                <p className="font-semibold">
-                  You have not yet registered your working day yet.
-                </p>
                 <p className="mt-3 text-sm">
                   You have worked today from <b>{preview.startStr}</b> to{" "}
                   <b>{preview.endStr}</b> and you took a break of{" "}
@@ -289,10 +291,7 @@ function EmployeeDashboard() {
               </>
             ) : (
               <>
-                <p className="font-semibold">
-                  You have not yet registered your working day yet.
-                </p>
-                <p className="mt-2 text-sm">
+                <p className="mt-2 text-sm font-bold">
                   Fill out the form above to see a preview here.
                 </p>
               </>
@@ -300,7 +299,7 @@ function EmployeeDashboard() {
           </section>
         </div>
 
-        <aside className="rounded-lg bg-neutral-200 p-6 lg:sticky lg:top-8 lg:h-fit">
+        <aside className="rounded-lg bg-neutral-100 p-6 lg:sticky lg:top-8 lg:h-fit">
           <div className="mb-4 flex items-center justify-center gap-6">
             <button
               onClick={() => setWeekOffset((w) => w - 1)}
