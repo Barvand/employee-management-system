@@ -1,7 +1,8 @@
 // hooks/projects.ts
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createProject, updateProject } from "../api/projects";
-import type { Project } from "../api/projects";
+import type { Project } from "../types.ts";
+import type { NewProjectInput } from "../api/projects";
 
 type UseCreateProjectOptions = {
   withLog?: boolean;
@@ -13,7 +14,7 @@ export function useCreateProject(options?: UseCreateProjectOptions) {
   const qc = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: Project) => createProject(data),
+    mutationFn: (data: NewProjectInput) => createProject(data),
     onSuccess: () => {
       if (options?.onCreated) options.onCreated();
       qc.invalidateQueries({ queryKey: ["projects"] });

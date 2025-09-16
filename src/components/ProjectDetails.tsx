@@ -82,20 +82,17 @@ const ProjectDetails: React.FC = () => {
     setSuccess("");
 
     try {
-      const updated = await databases.updateDocument(
-        DB_ID,
-        PROJECTS_COLLECTION,
-        id!,
-        {
-          name: editFormData.name,
-          description: editFormData.description,
-          status: editFormData.status,
-          startDate: editFormData.startDate,
-          completionDate: editFormData.completionDate,
-        }
-      );
+      await databases.updateDocument(DB_ID, PROJECTS_COLLECTION, id!, {
+        name: editFormData.name,
+        description: editFormData.description,
+        status: editFormData.status,
+        startDate: editFormData.startDate,
+        completionDate: editFormData.completionDate,
+      });
 
-      setProject(updated as any);
+      // 🔄 Refetch to get latest data
+      await Promise.all([fetchProject(), fetchLogs()]);
+
       setSuccess("Prosjekt oppdatert.");
       setIsEditing(false);
     } catch (err) {

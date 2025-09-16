@@ -1,72 +1,82 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { fetchProjects } from "../api/projects";
 import { useUser } from "../features/auth/useUser";
 import ProjectForm from "../components/ProjectForm";
 import ProjectItem from "../components/ProjectItem";
 import { useQuery } from "@tanstack/react-query";
 import { useCreateProject } from "../hooks/projects";
-import type { Project } from "../types.ts";
 import { client } from "../lib/appwrite.ts";
+import type { Project } from "../types.ts";
 
 export default function Dashboard() {
   const { user, logout } = useUser();
-  const [activeTab, setActiveTab] = useState<"current" | "expired">("current");
+  const [activeTab, setActiveTab] = useState<
+    "active" | "completed" | "inactive"
+  >("active");
   const [search, setSearch] = useState("");
   const [showAddProject, setShowAddProject] = useState(false);
 
+  // Tabs: keep label + filter in one config
+  const TAB_CONFIG: Record<
+    string,
+    { label: string; filter: (p: Project) => boolean }
+  > = {
+    active: {
+      label: "Aktive Prosjekter",
+      filter: (p) => p.status === "active",
+    },
+    completed: {
+      label: "Avsluttede Prosjekter",
+      filter: (p) => p.status === "completed",
+    },
+    inactive: {
+      label: "Inaktive Prosjekter",
+      filter: (p) => p.status === "inactive",
+    },
+  } as const;
+
+  type TabKey = keyof typeof TAB_CONFIG;
+
   // derive role safely
   const role = (user?.prefs as any)?.role as "employee" | "admin" | undefined;
-
-  // log only when we actually have a role
   useEffect(() => {
     if (!role) return;
-    if (role === "employee") {
-      console.log("Employee logged in");
-    } else {
-      console.log("Admin logged in");
-    }
+    console.log(role === "employee" ? "Employee logged in" : "Admin logged in");
   }, [role]);
 
+  // subscribe to Appwrite changes
   useEffect(() => {
-    // Reset search when switching tabs
     const channel =
       "databases.688cf1f200298c50183d.collections.688cf200000b6fdbfe61.documents";
 
     const unsubscribe = client.subscribe(channel, (response) => {
       const events = response.events as string[];
-
-      if (
-        events.includes("create") ||
-        events.includes("update") ||
-        events.includes("delete")
-      ) {
+      if (events.some((e) => ["create", "update", "delete"].includes(e))) {
         console.log("Project changed:", response.payload);
         refetch();
       }
     });
 
-    return () => {
-      // important: avoid duplicate subscriptions on re-mounts
-      unsubscribe();
-    };
-  }, [client]);
+    return () => unsubscribe();
+  }, []);
 
   const {
     data: projects = [],
     isLoading,
     error,
     refetch,
-  } = useQuery({
+  } = useQuery<Project[]>({
     queryKey: ["projects"],
     queryFn: fetchProjects,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    refetchOnWindowFocus: true,
   });
+
+  // Projects for current tab
+  const displayedProjects = projects.filter(TAB_CONFIG[activeTab].filter);
 
   const [formData, setFormData] = useState<any>({
     name: "",
     description: "",
-    status: "aktiv",
+    status: "active",
     startDate: "",
     completionDate: "",
   });
@@ -78,64 +88,18 @@ export default function Dashboard() {
       setFormData({
         name: "",
         description: "",
-        status: "aktiv",
+        status: "active",
         startDate: "",
         completionDate: "",
       });
       setShowAddProject(false);
-      // Refetch projects after creating a new one
       refetch();
     },
   });
 
-  const filtered = useMemo(() => {
-    const items = Array.isArray(projects) ? projects : [];
-
-    return items
-      .map((p) => {
-        // Normalize without mutating the original object
-        const legacy = (p as any)?.isActive;
-        // Map possible status values to allowed types
-        const rawStatus =
-          p.status ??
-          (legacy !== undefined ? (legacy ? "aktiv" : "inaktiv") : "aktiv");
-        let status: Project["status"];
-        switch (rawStatus) {
-          case "aktiv":
-          case "active":
-            status = "aktiv";
-            break;
-          case "inaktiv":
-          case "inactive":
-            status = "inaktiv";
-            break;
-          case "completed":
-            status = "avsluttet";
-            break;
-          default:
-            status = "aktiv";
-        }
-        const name = (p.name ?? "").toString();
-
-        return { ...p, status, name };
-      })
-      .filter((p) => {
-        const matchesTab =
-          activeTab === "current"
-            ? p.status === "aktiv"
-            : p.status === "avsluttet" || p.status === "inaktiv";
-
-        const matchesSearch = p.name
-          .toLowerCase()
-          .includes(search.toLowerCase());
-
-        return matchesTab && matchesSearch;
-      });
-  }, [projects, activeTab, search]);
-
-  // Debug logging to see what's being fetched
-  React.useEffect(() => {
-    if (projects && projects.length > 0) {
+  // Debug logging
+  useEffect(() => {
+    if (projects.length > 0) {
       console.log("Fetched projects:", projects);
       console.log("First project structure:", projects[0]);
     }
@@ -147,7 +111,7 @@ export default function Dashboard() {
       <div className="flex justify-end items-center mb-4">
         <button
           onClick={logout}
-          className="text-sm text-red-600 hover:underline cursor-pointer"
+          className="text-sm text-red-600 hover:underline"
         >
           Log ut
         </button>
@@ -155,29 +119,22 @@ export default function Dashboard() {
 
       {/* Tabs */}
       <div className="flex mb-4 space-x-4">
-        <button
-          onClick={() => setActiveTab("current")}
-          className={`px-4 py-2 rounded ${
-            activeTab === "current" ? "bg-blue-600 text-white" : "bg-gray-200"
-          }`}
-        >
-          Aktive Prosjekter (
-          {filtered.filter((p) => p.status === "aktiv").length})
-        </button>
-        <button
-          onClick={() => setActiveTab("expired")}
-          className={`px-4 py-2 rounded ${
-            activeTab === "expired" ? "bg-blue-600 text-white" : "bg-gray-200"
-          }`}
-        >
-          Avsluttede Prosjekter (
-          {
-            filtered.filter(
-              (p) => p.status === "avsluttet" || p.status === "inaktiv"
-            ).length
-          }
-          )
-        </button>
+        {(
+          Object.entries(TAB_CONFIG) as [TabKey, (typeof TAB_CONFIG)[TabKey]][]
+        ).map(([key, cfg]) => {
+          const count = projects.filter(cfg.filter).length;
+          return (
+            <button
+              key={key}
+              onClick={() => setActiveTab(key as any)}
+              className={`px-4 py-2 rounded ${
+                activeTab === key ? "bg-blue-600 text-white" : "bg-gray-200"
+              }`}
+            >
+              {cfg.label} ({count})
+            </button>
+          );
+        })}
       </div>
 
       <div className="flex justify-between items-center mb-4">
@@ -222,7 +179,6 @@ export default function Dashboard() {
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
           >
             <path
               strokeLinecap="round"
@@ -247,10 +203,7 @@ export default function Dashboard() {
                 >
               ) => {
                 const { name, value } = e.target;
-                setFormData((prev: any) => ({
-                  ...prev,
-                  [name]: value,
-                }));
+                setFormData((prev: any) => ({ ...prev, [name]: value }));
               }}
               onSubmit={(e: React.FormEvent) => {
                 e.preventDefault();
@@ -273,12 +226,11 @@ export default function Dashboard() {
       <div>
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold">
-            {activeTab === "current"
-              ? "Aktive Prosjekter"
-              : "Avsluttede Prosjekter"}
+            {TAB_CONFIG[activeTab].label}
           </h2>
           <span className="text-sm text-gray-500">
-            {projects.length} prosjekt{projects.length !== 1 ? "er" : ""}
+            {displayedProjects.length} prosjekt
+            {displayedProjects.length !== 1 ? "er" : ""}
           </span>
         </div>
 
@@ -286,7 +238,7 @@ export default function Dashboard() {
           <div className="text-center py-8">
             <p className="text-gray-600">Laster prosjekter...</p>
           </div>
-        ) : projects.length === 0 ? (
+        ) : displayedProjects.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-gray-600">
               {search
@@ -304,7 +256,7 @@ export default function Dashboard() {
           </div>
         ) : (
           <ul className="space-y-2">
-            {projects.map((p) => (
+            {displayedProjects.map((p) => (
               <ProjectItem key={p.$id} project={p} />
             ))}
           </ul>

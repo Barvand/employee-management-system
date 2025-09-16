@@ -1,19 +1,24 @@
 // src/types.ts
-export interface Project {
+export type ProjectStatus = "active" | "inactive" | "completed" | "cancelled";
+
+export type Project = {
   $id: string;
   name: string;
+  totalHours: number;
   description?: string;
-  status: "inaktiv" | "aktiv" | "avsluttet";
-  startDate?: string;
-  completionDate?: string;
-  createdAt?: string;
-  createdBy?: string;
-}
+  createdBy: string;
+  status: ProjectStatus;
+  startDate?: string | null;
+  completionDate?: string | null;
+  client?: string | null;
+  $createdAt: string;
+  $updatedAt: string;
+};
 
 export type CreateProjectInput = {
   name: string;
   description?: string;
-  status: "aktiv" | "inaktiv" | "avsluttet";
+  status: "active" | "inactive" | "completed" | "cancelled";
   startDate?: string;
   completionDate?: string;
 };

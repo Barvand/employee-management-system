@@ -83,9 +83,9 @@ const ProjectForm: React.FC<Props> = ({
           className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           required
         >
-          <option value="inaktiv">Inaktiv</option>
-          <option value="aktiv">Aktiv</option>
-          <option value="avsluttet">Avsluttet</option>
+          <option value="inactive">Inaktiv</option>
+          <option value="active">Aktiv</option>
+          <option value="completed">Avsluttet</option>
         </select>
       </div>
 

@@ -1,51 +1,35 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import type { Project } from "../api/projects";
+import type { Project } from "../types";
+// Backend statuses
+type Status = "active" | "inactive" | "completed";
 
-// Normalize API status to Norwegian UI status
-type UiStatus = "aktiv" | "inaktiv" | "avsluttet";
-const toUiStatus = (s?: "active" | "inactive" | "completed"): UiStatus => {
-  const map = {
-    active: "aktiv",
-    inactive: "inaktiv",
-    completed: "avsluttet",
-  } as const;
-  return map[s ?? "active"];
+// Label + color dictionaries
+const STATUS_LABEL: Record<Status, string> = {
+  active: "Aktiv",
+  inactive: "Inaktiv",
+  completed: "Avsluttet",
 };
 
-const getStatusColor = (status: UiStatus) => {
-  switch (status) {
-    case "aktiv":
-      return "bg-green-100 text-green-800";
-    case "avsluttet":
-      return "bg-blue-100 text-blue-800";
-    case "inaktiv":
-      return "bg-red-100 text-red-800";
-  }
+const STATUS_COLOR: Record<Status, string> = {
+  active: "bg-green-100 text-green-800",
+  inactive: "bg-red-100 text-red-800",
+  completed: "bg-blue-100 text-blue-800",
 };
 
-const getStatusText = (status: UiStatus) => {
-  switch (status) {
-    case "aktiv":
-      return "Aktiv";
-    case "avsluttet":
-      return "Avsluttet";
-    case "inaktiv":
-      return "Inaktiv";
-  }
-};
-
-const formatDate = (dateString?: string) =>
-  dateString
-    ? new Date(dateString).toLocaleDateString("no-NO", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      })
-    : null;
+// Date formatter
+// const formatDate = (dateString?: string) =>
+//   dateString
+//     ? new Date(dateString).toLocaleDateString("no-NO", {
+//         year: "numeric",
+//         month: "short",
+//         day: "numeric",
+//       })
+//     : null;
 
 const ProjectItem: React.FC<{ project: Project }> = ({ project }) => {
-  const uiStatus = toUiStatus(project.status as any);
+  // make sure TS knows project.status is of type Status
+  const status = project.status as Status;
 
   return (
     <li className="bg-white p-4 rounded border shadow-sm hover:shadow-md transition-shadow">
@@ -57,11 +41,9 @@ const ProjectItem: React.FC<{ project: Project }> = ({ project }) => {
                 {project.name}
               </h3>
               <span
-                className={`text-sm font-medium px-2 py-1 rounded-full ${getStatusColor(
-                  uiStatus
-                )}`}
+                className={`text-sm font-medium px-2 py-1 rounded-full ${STATUS_COLOR[status]}`}
               >
-                {getStatusText(uiStatus)}
+                {STATUS_LABEL[status]}
               </span>
             </div>
 
@@ -70,16 +52,6 @@ const ProjectItem: React.FC<{ project: Project }> = ({ project }) => {
                 {project.description}
               </p>
             )}
-
-            <div className="flex gap-4 text-xs text-gray-500">
-              {project.startDate && (
-                <span>Oppstart: {formatDate(project.startDate)}</span>
-              )}
-
-              {project.createdAt && (
-                <span>Opprettet: {formatDate(project.createdAt)}</span>
-              )}
-            </div>
           </div>
 
           <div className="ml-4 flex-shrink-0">

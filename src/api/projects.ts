@@ -6,21 +6,7 @@ import {
   account,
 } from "../lib/appwrite";
 import { Query, ID } from "appwrite";
-
-export type Project = {
-  $id: string;
-  nr?: number; // auto-generated 111, 112, 113...
-  name: string;
-  description?: string;
-  client?: string;
-  status?: "inactive" | "active" | "completed"; // maps to Inaktiv / Aktiv / avsluttet
-  isActive?: boolean; // derived convenience
-  startDate?: string; // ISO date
-  endDate?: string; // ISO date
-  totalHours?: number;
-  totalMinutes?: number;
-  createdAt?: string; // convenience when you need it
-};
+import type { Project } from "../types.ts";
 
 export async function fetchProjects(): Promise<Project[]> {
   const res = await databases.listDocuments(DB_ID, PROJECTS_COLLECTION, [
@@ -35,7 +21,7 @@ export async function fetchProjects(): Promise<Project[]> {
   })) as Project[];
 }
 
-type NewProjectInput = {
+export type NewProjectInput = {
   name: string;
   description?: string;
   client?: string;
@@ -76,13 +62,14 @@ export async function createProject(data: NewProjectInput) {
   return updated;
 }
 
-/** Update a project by id. Only send changed fields. */
-export async function updateProject(id: string, patch: Partial<Project>) {
-  // Keep status <-> isActive consistent
-  let next = { ...patch } as any;
-  if (patch.status) next.isActive = patch.status === "active";
-  if (typeof patch.isActive === "boolean" && !patch.status) {
-    next.status = patch.isActive ? "active" : "inactive";
-  }
-  return databases.updateDocument(DB_ID, PROJECTS_COLLECTION, id, next);
+export async function updateProject(
+  id: string,
+  patch: Partial<
+    Omit<
+      Project,
+      "$id" | "$databaseId" | "$collectionId" | "$createdAt" | "$updatedAt"
+    >
+  >
+) {
+  return databases.updateDocument(DB_ID, PROJECTS_COLLECTION, id, patch);
 }
