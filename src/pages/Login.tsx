@@ -1,34 +1,28 @@
-// /src/pages/Login.jsx
 import { useState } from "react";
-import { Account } from "appwrite";
 import { useNavigate } from "react-router-dom";
-import { client } from "../lib/appwrite";
+import { useAuth } from "../features/auth/useAuth";
 import LoginForm from "../components/login/login";
-const account = new Account(client);
 
-const Login = () => {
+export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const navigate = useNavigate();
+  const { login } = useAuth();
 
-  const handleLogin = async (e: any) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-
     try {
-      // Navigate to Employee Dashboard - Navigate to Admin dashboard - Navigate to Regnskap - Depend on the role of the user
-      await account.createEmailPasswordSession(email, password);
-      const user = await account.get(); // fetch user data with prefs
-      if (user.prefs.role === "admin") {
-        navigate("/admin-dashboard");
-      } else if (user.prefs.role === "employee") {
-        navigate("/employee-dashboard");
-      } else {
-        navigate("/");
-      }
-    } catch (err) {
-      console.error(err);
+      const user = await login({ email, password });
+      console.log(user);
+      if (user.role === "admin") navigate("/admin-dashboard");
+      else if (user.role === "accountant") navigate("/accountant-dashboard");
+      else navigate("/employee-dashboard");
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.message || err?.message || "Login failed";
+      setError(msg);
     }
   };
 
@@ -38,10 +32,8 @@ const Login = () => {
       email={email}
       setEmail={setEmail}
       password={password}
-      error={error}
       setPassword={setPassword}
+      error={error}
     />
   );
-};
-
-export default Login;
+}

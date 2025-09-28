@@ -1,4 +1,4 @@
-import { AuthProvider } from "./app/authProvider.tsx";
+import { AuthContextProvider } from "./features/auth/AuthContext.tsx";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
@@ -10,9 +10,9 @@ const queryClient = new QueryClient();
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
+      <AuthContextProvider>
         <App />
-      </AuthProvider>
+      </AuthContextProvider>
     </QueryClientProvider>
   </StrictMode>
 );

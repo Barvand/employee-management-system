@@ -8,8 +8,9 @@ function RegisterPage() {
     email: "",
     password: "",
     name: "",
+    role: "",
   });
-  const [error, setError] = useState("");    // string for API errors
+  const [error, setError] = useState(""); // string for API errors
   const [success, setSuccess] = useState(""); // string for success message
   const navigate = useNavigate();
 
@@ -30,7 +31,13 @@ function RegisterPage() {
       setSuccess(msg);
 
       // clear the form after success
-      setInputs({ username: "", email: "", password: "", name: "" });
+      setInputs({
+        username: "",
+        email: "",
+        password: "",
+        name: "",
+        role: "",
+      });
 
       // Option A: redirect after showing the message briefly
       setTimeout(() => {
@@ -65,7 +72,7 @@ function RegisterPage() {
       )}
 
       <form onSubmit={handleClick} className="flex flex-col gap-2">
-         <input
+        <input
           type="text"
           placeholder="name"
           name="name"
@@ -101,6 +108,18 @@ function RegisterPage() {
           required
           className="p-2 border"
         />
+        <label className="text-sm font-medium">Role</label>
+        <select
+          name="role"
+          value={inputs.role}
+          onChange={handleChange}
+          required
+          className="p-2 border"
+        >
+          <option value="admin">Admin</option>
+          <option value="accountant">Accountant</option>
+          <option value="employee">Employee</option>
+        </select>
         <button type="submit" className="p-2 border bg-white">
           Register
         </button>

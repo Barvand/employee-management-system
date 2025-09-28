@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { databases, account } from "../lib/appwrite";
+import { databases } from "../lib/appwrite";
 import { ID } from "appwrite";
 import HourReview from "../components/HourReview";
 import { fetchProjects } from "../api/projects";
+import { useAuth } from "../features/auth/useAuth";
 
 const DB_ID = "688cf1f200298c50183d";
 const LOGS_COLLECTION_ID = "688cf3c800172f6bf40c";
@@ -19,20 +20,8 @@ interface LogFormData {
 
 function EmployeeDashboard() {
   const queryClient = useQueryClient();
-
-  const [user, setUser] = useState<any | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-    account
-      .get()
-      .then((u) => mounted && setUser(u))
-      .catch(() => mounted && setUser(null))
-      .finally(() => mounted && console.log("User fetch complete"));
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  const { currentUser } = useAuth();
+  console.log(currentUser);
 
   const {
     data: projects = [],
@@ -93,7 +82,6 @@ function EmployeeDashboard() {
     setSuccessMessage(null);
 
     try {
-      const currentUser = await account.get();
       setUser(currentUser);
       console.log("Current user:", currentUser);
       const start = new Date(`${formData.date}T${formData.startTime}`);
@@ -111,8 +99,8 @@ function EmployeeDashboard() {
       }
 
       await databases.createDocument(DB_ID, LOGS_COLLECTION_ID, ID.unique(), {
-        userId: currentUser.$id,
-        userName: currentUser.name || currentUser.email,
+        userId: currentUser?.$id,
+        userName: currentUser?.name || currentUser?.email,
         projectId: formData.projectId, // <-- id of selected project
         timestamp: new Date(`${formData.date}T00:00:00`).toISOString(),
         hoursAdded: Math.round(hoursWorked * 100) / 100,

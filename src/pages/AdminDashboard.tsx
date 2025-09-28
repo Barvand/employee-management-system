@@ -1,15 +1,16 @@
 import React, { useEffect, useState } from "react";
 import { fetchProjects } from "../api/projects";
-import { useUser } from "../features/auth/useUser";
+
 import ProjectForm from "../components/ProjectForm";
 import ProjectItem from "../components/ProjectItem";
 import { useQuery } from "@tanstack/react-query";
 import { useCreateProject } from "../hooks/projects";
 import { client } from "../lib/appwrite.ts";
 import type { Project } from "../types.ts";
+import { useAuth } from "../features/auth/useAuth.tsx";
 
 export default function Dashboard() {
-  const { user, logout } = useUser();
+  const { logout } = useAuth();
   const [activeTab, setActiveTab] = useState<
     "active" | "completed" | "inactive"
   >("active");
