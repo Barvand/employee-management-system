@@ -6,6 +6,7 @@ import ProjectDetails from "./components/ProjectDetails";
 import PrivateRoute from "./app/PrivateRoute";
 import EmployeeDashboard from "./pages/EmployeeDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
+import Register from "./pages/RegisterPage";
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
         <main className="container mx-auto py-4">
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register/>} />
 
             {/* Example: Protected route with a form */}
             <Route
