@@ -1,18 +1,24 @@
+// src/pages/ProjectDetails.tsx
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { databases } from "../lib/appwrite";
 import ProjectForm from "../components/ProjectForm";
-import { Query } from "appwrite";
-import type { Models } from "appwrite";
 import ConfirmModal from "./ConfirmModal";
-import type { Project } from "../types.ts";
+import type { Project } from "../types";
+import { makeRequest } from "../axios";
 
-const DB_ID = "688cf1f200298c50183d";
-const PROJECTS_COLLECTION = "688cf200000b6fdbfe61";
-const PROJECT_LOGS_COLLECTION = "688cf3c800172f6bf40c";
+type ProjectLog = {
+  id: string; // or number, whatever your API returns
+  projectId: string;
+  userId: string;
+  userName: string;
+  action?: "created" | "updated" | "deleted" | "hoursAdded";
+  note?: string;
+  hoursAdded?: number;
+  timestamp: string; // ISO
+};
 
 const ProjectDetails: React.FC = () => {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
   const [project, setProject] = useState<Project | null>(null);
@@ -23,23 +29,14 @@ const ProjectDetails: React.FC = () => {
   const [logs, setLogs] = useState<ProjectLog[]>([]);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
-  type ProjectLog = Models.Document & {
-    projectId: string;
-    userId: string;
-    userName: string;
-    action?: "created" | "updated" | "deleted" | "hoursAdded";
-    note?: string;
-    hoursAdded?: number;
-    timestamp: string; // ISO
-  };
-
   const totalHours = logs.reduce((sum, log) => sum + (log.hoursAdded || 0), 0);
 
+  // --- API calls (using your axios instance) ---
   const fetchProject = async () => {
     try {
-      const res = await databases.getDocument(DB_ID, PROJECTS_COLLECTION, id!);
-      setProject(res as any);
-      setEditFormData(res); // preload edit form
+      const { data } = await makeRequest.get(`/projects/${id}`);
+      setProject(data);
+      setEditFormData(data);
     } catch (err) {
       console.error("Failed to fetch project:", err);
       setError("Prosjekt ikke funnet.");
@@ -48,18 +45,16 @@ const ProjectDetails: React.FC = () => {
 
   const fetchLogs = async () => {
     try {
-      const res = await databases.listDocuments(
-        DB_ID,
-        PROJECT_LOGS_COLLECTION,
-        [Query.equal("projectId", id!), Query.orderDesc("timestamp")]
-      );
-      setLogs(res.documents as any);
+      // Prefer nested route: /projects/:id/logs
+      const { data } = await makeRequest.get(`/projects/${id}/logs`);
+      setLogs(data);
     } catch (err) {
       console.error("Failed to fetch logs:", err);
     }
   };
 
   useEffect(() => {
+    if (!id) return;
     fetchProject();
     fetchLogs();
   }, [id]);
@@ -82,17 +77,16 @@ const ProjectDetails: React.FC = () => {
     setSuccess("");
 
     try {
-      await databases.updateDocument(DB_ID, PROJECTS_COLLECTION, id!, {
+      // Map form fields to your DB columns (endDate instead of completionDate)
+      await makeRequest.patch(`/projects/${id}`, {
         name: editFormData.name,
         description: editFormData.description,
         status: editFormData.status,
-        startDate: editFormData.startDate,
-        completionDate: editFormData.completionDate,
+        startDate: editFormData.startDate || null,
+        endDate: editFormData.endDate || editFormData.completionDate || null,
       });
 
-      // 🔄 Refetch to get latest data
       await Promise.all([fetchProject(), fetchLogs()]);
-
       setSuccess("Prosjekt oppdatert.");
       setIsEditing(false);
     } catch (err) {
@@ -103,7 +97,7 @@ const ProjectDetails: React.FC = () => {
 
   const handleDelete = async () => {
     try {
-      await databases.deleteDocument(DB_ID, PROJECTS_COLLECTION, id!);
+      await makeRequest.delete(`/projects/${id}`);
       navigate("/"); // back to dashboard
     } catch (err) {
       console.error("Delete failed:", err);
@@ -114,8 +108,10 @@ const ProjectDetails: React.FC = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "active":
+      case "aktiv":
         return "text-green-600";
       case "finished":
+      case "avsluttet":
         return "text-blue-600";
       case "inaktiv":
         return "text-red-500";
@@ -127,8 +123,10 @@ const ProjectDetails: React.FC = () => {
   const getStatusText = (status: string) => {
     switch (status) {
       case "aktiv":
+      case "active":
         return "Aktiv";
       case "avsluttet":
+      case "finished":
         return "Avsluttet";
       case "inaktiv":
         return "Inaktiv";
@@ -194,20 +192,25 @@ const ProjectDetails: React.FC = () => {
               </div>
             )}
 
-            {project.completionDate && (
+            {/* We display endDate (formerly completionDate) */}
+            {(project as any).endDate && (
               <div>
                 <span className="font-medium">Ferdigstilt:</span>
                 <span className="ml-2">
-                  {new Date(project.completionDate).toLocaleDateString("no-NO")}
+                  {new Date((project as any).endDate).toLocaleDateString(
+                    "no-NO"
+                  )}
                 </span>
               </div>
             )}
 
             <div className="text-sm text-gray-500 pt-2 border-t">
-              {project.createdBy && (
+              {(project as any).createdBy && (
                 <p>
                   Opprettet av:{" "}
-                  <span className="font-semibold">{project.createdBy}</span>
+                  <span className="font-semibold">
+                    {(project as any).createdBy}
+                  </span>
                 </p>
               )}
             </div>
@@ -236,7 +239,7 @@ const ProjectDetails: React.FC = () => {
 
               <ul className="space-y-3">
                 {logs.map((log) => (
-                  <li key={log.$id} className="p-3 bg-gray-100 rounded">
+                  <li key={log.id} className="p-3 bg-gray-100 rounded">
                     <p>
                       <span className="font-semibold">{log.userName}</span>
                       {log.action && <span> {log.action}</span>}

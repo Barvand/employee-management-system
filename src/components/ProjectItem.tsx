@@ -33,7 +33,7 @@ const ProjectItem: React.FC<{ project: Project }> = ({ project }) => {
 
   return (
     <li className="bg-white p-4 rounded border shadow-sm hover:shadow-md transition-shadow">
-      <Link to={`/admin/projects/${project.$id}`} className="block">
+      <Link to={`/admin/projects/${project.id}`} className="block">
         <div className="flex justify-between items-start">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2">
@@ -45,6 +45,7 @@ const ProjectItem: React.FC<{ project: Project }> = ({ project }) => {
               >
                 {STATUS_LABEL[status]}
               </span>
+              <p> ID: {project.id}</p>
             </div>
 
             {project.description && (

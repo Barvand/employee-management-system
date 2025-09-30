@@ -1,18 +1,17 @@
 // src/types.ts
-export type ProjectStatus = "active" | "inactive" | "completed" | "cancelled";
+export type ProjectStatus = "active" | "completed" | "inactive";
 
 export type Project = {
-  $id: string;
+  id: number; // MySQL INT
   name: string;
-  totalHours: number;
-  description?: string;
-  createdBy: string;
-  status: ProjectStatus;
-  startDate?: string | null;
-  completionDate?: string | null;
-  client?: string | null;
-  $createdAt: string;
-  $updatedAt: string;
+  description: string | null;
+  status: ProjectStatus; // keep lowercase in API/DB for consistency
+  totalHours: number | null;
+  startDate: string | null; // "YYYY-MM-DD"
+  endDate: string | null; // replaces completionDate
+  // Optional if you later add audit columns
+  createdAt?: string; // ISO or "YYYY-MM-DD HH:mm:ss"
+  updatedAt?: string;
 };
 
 export type CreateProjectInput = {

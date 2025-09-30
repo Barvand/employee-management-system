@@ -1,25 +1,23 @@
+// src/pages/Dashboard.tsx
 import React, { useEffect, useState } from "react";
-import { fetchProjects } from "../api/projects";
-
 import ProjectForm from "../components/ProjectForm";
 import ProjectItem from "../components/ProjectItem";
-import { useQuery } from "@tanstack/react-query";
-import { useCreateProject } from "../hooks/projects";
-import { client } from "../lib/appwrite.ts";
-import type { Project } from "../types.ts";
-import { useAuth } from "../features/auth/useAuth.tsx";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import type { Project } from "../types";
+import { useAuth } from "../features/auth/useAuth";
+import { makeRequest } from "../axios";
 
 export default function Dashboard() {
-  const { logout } = useAuth();
+  const { logout, currentUser } = useAuth();
+
   const [activeTab, setActiveTab] = useState<
     "active" | "completed" | "inactive"
   >("active");
   const [search, setSearch] = useState("");
   const [showAddProject, setShowAddProject] = useState(false);
 
-  // Tabs: keep label + filter in one config
   const TAB_CONFIG: Record<
-    string,
+    "active" | "completed" | "inactive",
     { label: string; filter: (p: Project) => boolean }
   > = {
     active: {
@@ -34,33 +32,9 @@ export default function Dashboard() {
       label: "Inaktive Prosjekter",
       filter: (p) => p.status === "inactive",
     },
-  } as const;
+  };
 
-  type TabKey = keyof typeof TAB_CONFIG;
-
-  // derive role safely
-  const role = (user?.prefs as any)?.role as "employee" | "admin" | undefined;
-  useEffect(() => {
-    if (!role) return;
-    console.log(role === "employee" ? "Employee logged in" : "Admin logged in");
-  }, [role]);
-
-  // subscribe to Appwrite changes
-  useEffect(() => {
-    const channel =
-      "databases.688cf1f200298c50183d.collections.688cf200000b6fdbfe61.documents";
-
-    const unsubscribe = client.subscribe(channel, (response) => {
-      const events = response.events as string[];
-      if (events.some((e) => ["create", "update", "delete"].includes(e))) {
-        console.log("Project changed:", response.payload);
-        refetch();
-      }
-    });
-
-    return () => unsubscribe();
-  }, []);
-
+  // ---- FETCH: GET /api/projects
   const {
     data: projects = [],
     isLoading,
@@ -68,24 +42,54 @@ export default function Dashboard() {
     refetch,
   } = useQuery<Project[]>({
     queryKey: ["projects"],
-    queryFn: fetchProjects,
+    queryFn: async () => {
+      const { data } = await makeRequest.get("/projects");
+      return data;
+    },
   });
 
-  // Projects for current tab
-  const displayedProjects = projects.filter(TAB_CONFIG[activeTab].filter);
-
+  // ---- local form state
   const [formData, setFormData] = useState<any>({
     name: "",
     description: "",
     status: "active",
     startDate: "",
-    completionDate: "",
+    completionDate: "", // mapped to endDate in API
   });
 
-  const createMutation = useCreateProject({
-    withLog: true,
-    user: user ? { id: user.$id, name: user.name } : undefined,
-    onCreated: () => {
+  // ---- CREATE: POST /api/projects (+ optional log)
+  const createMutation = useMutation({
+    mutationFn: async (payload: any) => {
+      const { name, description, status, startDate, completionDate } = payload;
+
+      // Create project
+      const { data: created } = await makeRequest.post("/projects", {
+        name,
+        description,
+        status,
+        startDate: startDate || null, // backend expects "YYYY-MM-DD" or null
+        endDate: completionDate || null,
+      });
+
+      // Optional: create a log entry
+      try {
+        if (currentUser?.id) {
+          await makeRequest.post(`/projects/${created.id}/logs`, {
+            action: "created",
+            userId: currentUser.id,
+            userName: currentUser.name,
+            note: `Prosjekt opprettet av ${currentUser.name}`,
+            timestamp: new Date().toISOString(),
+          });
+        }
+      } catch (e) {
+        // Logging failure shouldn't block UI
+        console.warn("Could not write project log", e);
+      }
+
+      return created;
+    },
+    onSuccess: () => {
       setFormData({
         name: "",
         description: "",
@@ -98,13 +102,25 @@ export default function Dashboard() {
     },
   });
 
-  // Debug logging
+  // Debug
   useEffect(() => {
     if (projects.length > 0) {
       console.log("Fetched projects:", projects);
       console.log("First project structure:", projects[0]);
     }
   }, [projects]);
+
+  // ---- filter by tab + search
+  const displayedProjects = projects
+    .filter(TAB_CONFIG[activeTab].filter)
+    .filter((p) => {
+      const q = search.trim().toLowerCase();
+      if (!q) return true;
+      return (
+        p.name.toLowerCase().includes(q) ||
+        (p.description || "").toLowerCase().includes(q)
+      );
+    });
 
   return (
     <div className="p-4 max-w-4xl mx-auto">
@@ -121,13 +137,15 @@ export default function Dashboard() {
       {/* Tabs */}
       <div className="flex mb-4 space-x-4">
         {(
-          Object.entries(TAB_CONFIG) as [TabKey, (typeof TAB_CONFIG)[TabKey]][]
+          Object.entries(TAB_CONFIG) as Array<
+            [keyof typeof TAB_CONFIG, (typeof TAB_CONFIG)["active"]]
+          >
         ).map(([key, cfg]) => {
           const count = projects.filter(cfg.filter).length;
           return (
             <button
               key={key}
-              onClick={() => setActiveTab(key as any)}
+              onClick={() => setActiveTab(key)}
               className={`px-4 py-2 rounded ${
                 activeTab === key ? "bg-blue-600 text-white" : "bg-gray-200"
               }`}
@@ -258,7 +276,7 @@ export default function Dashboard() {
         ) : (
           <ul className="space-y-2">
             {displayedProjects.map((p) => (
-              <ProjectItem key={p.$id} project={p} />
+              <ProjectItem key={p.id} project={p} />
             ))}
           </ul>
         )}

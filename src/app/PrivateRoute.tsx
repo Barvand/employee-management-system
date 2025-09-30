@@ -1,40 +1,16 @@
-// /src/components/PrivateRoute.tsx
-import { useEffect, useState } from "react";
-import type { ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
-import { Account } from "appwrite";
-import { client } from "../lib/appwrite";
-const account = new Account(client);
+import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { useAuth } from "../features/auth/useAuth";
 
-interface PrivateRouteProps {
-  children: ReactNode;
-}
+type Props = { children?: React.ReactNode };
 
-const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
-  const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
+export default function PrivateRoute({ children }: Props) {
+  const { currentUser } = useAuth();
+  console.log(currentUser);
+  const location = useLocation();
 
-  useEffect(() => {
-    const checkSession = async () => {
-      try {
-        await account.get();
-        setLoading(false);
-      } catch (error) {
-        if (error instanceof Error) {
-          console.error("Auth error:", error.message);
-        }
-        navigate("/login");
-      }
-    };
-
-    checkSession();
-  }, [navigate]);
-
-  if (loading) {
-    return <p className="text-center mt-10">Checking session...</p>;
+  if (!currentUser) {
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
-
-  return <>{children}</>;
-};
-
-export default PrivateRoute;
+  // works with either <PrivateRoute><Page/></PrivateRoute> or <Route element={<PrivateRoute/>} />
+  return children ? <>{children}</> : <Outlet />;
+}

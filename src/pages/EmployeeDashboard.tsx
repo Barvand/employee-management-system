@@ -1,13 +1,10 @@
+// src/pages/EmployeeDashboard.tsx
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { databases } from "../lib/appwrite";
-import { ID } from "appwrite";
 import HourReview from "../components/HourReview";
 import { fetchProjects } from "../api/projects";
+// import { createWorkLog } from "../api/logs"; // <-- implement this to hit your backend
 import { useAuth } from "../features/auth/useAuth";
-
-const DB_ID = "688cf1f200298c50183d";
-const LOGS_COLLECTION_ID = "688cf3c800172f6bf40c";
 
 interface LogFormData {
   projectId: string;
@@ -21,7 +18,6 @@ interface LogFormData {
 function EmployeeDashboard() {
   const queryClient = useQueryClient();
   const { currentUser } = useAuth();
-  console.log(currentUser);
 
   const {
     data: projects = [],
@@ -44,7 +40,15 @@ function EmployeeDashboard() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // week state for the right panel (you can wire this into HourReview if it supports it)
+  // which identifier to use for logs (adapt to your API later)
+  const userIdForLogs =
+    (currentUser as any)?.id ??
+    (currentUser as any)?.userId ??
+    currentUser?.username ??
+    currentUser?.email ??
+    null;
+
+  // week selector (for HourReview)
   const [weekOffset, setWeekOffset] = useState(0);
 
   // live preview of worked hours
@@ -82,8 +86,12 @@ function EmployeeDashboard() {
     setSuccessMessage(null);
 
     try {
-      setUser(currentUser);
-      console.log("Current user:", currentUser);
+      if (!userIdForLogs) {
+        setSubmitError("You must be logged in.");
+        setSubmitting(false);
+        return;
+      }
+
       const start = new Date(`${formData.date}T${formData.startTime}`);
       const end = new Date(`${formData.date}T${formData.endTime}`);
       const breakMs = formData.breakMinutes * 60 * 1000;
@@ -98,16 +106,21 @@ function EmployeeDashboard() {
         return;
       }
 
-      await databases.createDocument(DB_ID, LOGS_COLLECTION_ID, ID.unique(), {
-        userId: currentUser?.$id,
-        userName: currentUser?.name || currentUser?.email,
-        projectId: formData.projectId, // <-- id of selected project
-        timestamp: new Date(`${formData.date}T00:00:00`).toISOString(),
+      // Call your backend (implement createWorkLog)
+      await createWorkLog({
+        userId: userIdForLogs,
+        userName:
+          currentUser?.name ||
+          currentUser?.username ||
+          currentUser?.email ||
+          "Unknown",
+        projectId: formData.projectId,
+        date: formData.date, // YYYY-MM-DD
+        startTime: formData.startTime, // HH:mm
+        endTime: formData.endTime, // HH:mm
+        breakMinutes: formData.breakMinutes, // number
         hoursAdded: Math.round(hoursWorked * 100) / 100,
         note: formData.note || "",
-        startTime: formData.startTime,
-        endTime: formData.endTime,
-        breakMinutes: formData.breakMinutes,
       });
 
       setSuccessMessage("Hours logged successfully!");
@@ -120,15 +133,14 @@ function EmployeeDashboard() {
         note: "",
       });
 
-      // Invalidate and refetch the user logs to update HourReview
-      if (currentUser) {
-        await queryClient.invalidateQueries({
-          queryKey: ["logs", "user", currentUser.$id],
-        });
-      }
+      await queryClient.invalidateQueries({
+        queryKey: ["logs", "user", userIdForLogs],
+      });
     } catch (err: any) {
       console.error(err);
-      setSubmitError(err.message || "Something went wrong.");
+      setSubmitError(
+        err?.response?.data?.message || err?.message || "Something went wrong."
+      );
     } finally {
       setSubmitting(false);
     }
@@ -137,10 +149,12 @@ function EmployeeDashboard() {
   if (isLoading) return <p className="p-6">Loading projects...</p>;
   if (error)
     return (
-      <p className="p-6 text-red-600">Error: {error ? error.message : null}</p>
+      <p className="p-6 text-red-600">
+        Error: {error ? (error as any).message : null}
+      </p>
     );
 
-  // helpers for "Week 21" title – shows the ISO week number based on offset
+  // ISO week calc for header
   const current = new Date();
   const monday = new Date(current);
   const day = (current.getDay() + 6) % 7; // 0=Mon
@@ -156,7 +170,10 @@ function EmployeeDashboard() {
       <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-[1fr,420px]">
         {/* LEFT: form column */}
         <div>
-          <h2 className="text-2xl font-bold">Hi How are you today?</h2>
+          <h2 className="text-2xl font-bold">
+            Hi {currentUser?.name || currentUser?.username || "there"}, how are
+            you today?
+          </h2>
 
           {/* Project card */}
           <section className="mt-6 rounded-lg bg-neutral-100 p-6">
@@ -171,19 +188,23 @@ function EmployeeDashboard() {
               className="mt-3 w-full rounded border bg-white p-3"
             >
               <option value="">Select…</option>
-              {projects.map((project) => (
-                <option key={project.$id} value={project.$id}>
+              {projects.map((project: any) => (
+                <option
+                  key={project.id ?? project.$id ?? project.name}
+                  value={project.id ?? project.$id}
+                >
                   {project.name}
                 </option>
               ))}
             </select>
           </section>
+
           <div className="pt-2">
             <p className="text-red-500 font-bold">
-              {" "}
               Use your keyboard to enter the hours. e.g. 08:00 - 16:00
             </p>
           </div>
+
           {/* Times row */}
           <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
             <section className="rounded-lg bg-neutral-100 p-4">
@@ -278,15 +299,14 @@ function EmployeeDashboard() {
                 </button>
               </>
             ) : (
-              <>
-                <p className="mt-2 text-sm font-bold">
-                  Fill out the form above to see a preview here.
-                </p>
-              </>
+              <p className="mt-2 text-sm font-bold">
+                Fill out the form above to see a preview here.
+              </p>
             )}
           </section>
         </div>
 
+        {/* RIGHT: review column */}
         <aside className="rounded-lg bg-neutral-100 p-6 lg:sticky lg:top-8 lg:h-fit">
           <div className="mb-4 flex items-center justify-center gap-6">
             <button
@@ -304,7 +324,9 @@ function EmployeeDashboard() {
             </button>
           </div>
 
-          {user && <HourReview userId={user.$id} weekOffset={weekOffset} />}
+          {userIdForLogs && (
+            <HourReview userId={userIdForLogs} weekOffset={weekOffset} />
+          )}
         </aside>
       </div>
     </div>
