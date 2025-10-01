@@ -1,16 +1,16 @@
 type LoginFormProps = {
-  handleRegisterg: (e: React.FormEvent<HTMLFormElement>) => void; // or React.FormEventHandler<HTMLFormElement>
+  handleLogin: (e: React.FormEvent<HTMLFormElement>) => void; // or React.FormEventHandler<HTMLFormElement>
   email: string;
   setEmail: React.Dispatch<React.SetStateAction<string>>;
   password: string;
   setPassword: React.Dispatch<React.SetStateAction<string>>;
   error?: string | null;
-  name: string; 
+  name: string;
   setName: React.Dispatch<React.SetStateAction<string>>;
 };
 
 function RegisterForm({
-  handleRegister,
+  handleLogin,
   email,
   setEmail,
   setName,
@@ -31,7 +31,7 @@ function RegisterForm({
               {error}
             </div>
           )}
-  <div>
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Name
             </label>
@@ -68,7 +68,7 @@ function RegisterForm({
               required
             />
           </div>
-          
+
           <button
             type="submit"
             className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"

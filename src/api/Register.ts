@@ -1,14 +1,14 @@
 import { makeRequest } from "../axios";
 
-type Role = "employee" | "admin" | "accountant";
+export type Role = "admin" | "user" | "manager";
 
-type RegisterUserProps = {
-  name: string;
+interface RegisterUserProps {
+  username: string;
   email: string;
   password: string;
-  username: string;
-  role: Role;
-};
+  name: string;
+  role: Role; // <-- expects Role, not just string
+}
 
 export default async function registerUser(inputs: RegisterUserProps) {
   const res = await makeRequest.post("/auth/register", inputs);

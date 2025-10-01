@@ -106,22 +106,22 @@ function EmployeeDashboard() {
         return;
       }
 
-      // Call your backend (implement createWorkLog)
-      await createWorkLog({
-        userId: userIdForLogs,
-        userName:
-          currentUser?.name ||
-          currentUser?.username ||
-          currentUser?.email ||
-          "Unknown",
-        projectId: formData.projectId,
-        date: formData.date, // YYYY-MM-DD
-        startTime: formData.startTime, // HH:mm
-        endTime: formData.endTime, // HH:mm
-        breakMinutes: formData.breakMinutes, // number
-        hoursAdded: Math.round(hoursWorked * 100) / 100,
-        note: formData.note || "",
-      });
+      // // Call your backend (implement createWorkLog)
+      // await createWorkLog({
+      //   userId: userIdForLogs,
+      //   userName:
+      //     currentUser?.name ||
+      //     currentUser?.username ||
+      //     currentUser?.email ||
+      //     "Unknown",
+      //   projectId: formData.projectId,
+      //   date: formData.date, // YYYY-MM-DD
+      //   startTime: formData.startTime, // HH:mm
+      //   endTime: formData.endTime, // HH:mm
+      //   breakMinutes: formData.breakMinutes, // number
+      //   hoursAdded: Math.round(hoursWorked * 100) / 100,
+      //   note: formData.note || "",
+      // });
 
       setSuccessMessage("Hours logged successfully!");
       setFormData({

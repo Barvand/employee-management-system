@@ -1,26 +1,33 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import type { Role } from "../api/Register";
 import registerUser from "../api/Register";
 
 function RegisterPage() {
-  const [inputs, setInputs] = useState({
+  const [inputs, setInputs] = useState<{
+    username: string;
+    email: string;
+    password: string;
+    name: string;
+    role: Role;
+  }>({
     username: "",
     email: "",
     password: "",
     name: "",
-    role: "",
+    role: "employee" as Role,
   });
   const [error, setError] = useState(""); // string for API errors
   const [success, setSuccess] = useState(""); // string for success message
   const navigate = useNavigate();
 
-  const handleChange = (e) => {
+  const handleChange = (e: any) => {
     setInputs((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     if (error) setError("");
     if (success) setSuccess("");
   };
 
-  const handleClick = async (e) => {
+  const handleClick = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
     setSuccess("");
@@ -36,7 +43,7 @@ function RegisterPage() {
         email: "",
         password: "",
         name: "",
-        role: "",
+        role: "employee" as Role,
       });
 
       // Option A: redirect after showing the message briefly
@@ -49,11 +56,15 @@ function RegisterPage() {
 
       // Option B (immediate): navigate("/login", { replace: true, state: { flash: msg } });
     } catch (err) {
-      const msg =
-        err?.response?.data?.message ||
-        err?.response?.data?.error ||
-        err?.message ||
-        "Something went wrong";
+      let msg = "Something went wrong";
+      if (typeof err === "object" && err !== null) {
+        const anyErr = err as { response?: { data?: { message?: string; error?: string } }; message?: string };
+        msg =
+          anyErr.response?.data?.message ||
+          anyErr.response?.data?.error ||
+          anyErr.message ||
+          msg;
+      }
       setError(msg);
     }
   };
