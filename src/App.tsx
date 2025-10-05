@@ -16,7 +16,9 @@ function App() {
         <main className="container mx-auto py-4">
           <Routes>
             <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register/>} />
+            <PrivateRoute>
+              <Route path="admin/register" element={<Register />} />
+            </PrivateRoute>
 
             {/* Example: Protected route with a form */}
             <Route
